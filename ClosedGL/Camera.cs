@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+﻿using VRageMath;
 
 namespace ClosedGL
 {
@@ -8,10 +8,16 @@ namespace ClosedGL
     /// </summary>
     public class Camera : GameObject
     {
+        private float FieldOfView
+        {
+            get;
+            set;
+        } = 1f;
         private readonly Vector3D Normal = Vector3D.Backward;
 
         public Camera()
         {
+
         }
 
         /// <summary>
@@ -21,28 +27,27 @@ namespace ClosedGL
         /// <returns>Screen coordinate in pixels or null if projection is not on lcd</returns>
         public Vector2? ProjectPoint(Vector3D worldPoint)
         {
-            Vector3D referenceWorldPosition = TextPanel.WorldMatrix.Translation;
+            var viewPoint = Vector3D.Backward * Rotation;
+
             // Convert worldPosition into a world direction
-            Vector3D worldDirection = worldPoint - referenceWorldPosition;
+            Vector3D worldDirection = worldPoint - Position;
             // Convert worldDirection into a local direction
-            Vector3D localPointToProject = Vector3D.TransformNormal(worldDirection, MatrixD.Transpose(TextPanel.WorldMatrix));
+            
+            Vector3D localPointToProject = Vector3D.TransformNormal(worldDirection, MatrixD.Transpose(this.WorldMatrix));
             // ray direction in local space
-            Vector3D localRayDirection = localPointToProject - ViewPoint;
+            Vector3D localRayDirection = localPointToProject - viewPoint;
             //// we dont normalize to keep it at max performance
             //localRayDirection.Normalize();
 
             // project the plane onto the plane
-            Vector2? projectedLocalPoint = PlaneIntersection(ViewPoint, localRayDirection);
+            Vector2? projectedLocalPoint = PlaneIntersection(Vector3D.Backward * FieldOfView, localRayDirection);
             if (projectedLocalPoint != null)
             {
                 var projectedLocalPointNonNullable = (Vector2)projectedLocalPoint;
                 // convert it to pixels
-                Vector2 projectedLocalPointPixels = projectedLocalPointNonNullable * PixelMultiplier * new Vector2(1, -1);
-                projectedLocalPointPixels += TextPanel.TextureSize / 2f;
-                if (projectedLocalPointPixels.X >= 0 && projectedLocalPointPixels.Y >= 0 && projectedLocalPointPixels.X < TextPanel.SurfaceSize.X && projectedLocalPointPixels.Y < TextPanel.SurfaceSize.Y)
-                {
-                    return projectedLocalPointPixels;
-                }
+                Vector2 projectedLocalPointPixels = projectedLocalPointNonNullable;
+
+                return projectedLocalPointPixels;
             }
             return null;
         }
@@ -59,17 +64,17 @@ namespace ClosedGL
             {
                 return null;
             }
-            var t = -(Vector3D.Dot(origin, Normal) + D) / Vector3D.Dot(dir, Normal);
+            var t = -(Vector3D.Dot(origin, Normal) + 0) / Vector3D.Dot(dir, Normal);
             Vector3D res = origin + t * dir;
             return new Vector2((float)res.X, (float)res.Y);
         }
 
-        Vector3D LocalDirToWorldDir(Vector3D dir, MatrixD matrix)
+        static Vector3D LocalDirToWorldDir(Vector3D dir, MatrixD matrix)
         {
             return Vector3D.TransformNormal(dir, matrix);
         }
 
-        Vector3D LocalPosToWorldPos(Vector3D pos, MatrixD matrix)
+        static Vector3D LocalPosToWorldPos(Vector3D pos, MatrixD matrix)
         {
             return Vector3D.Transform(pos, matrix);
         }

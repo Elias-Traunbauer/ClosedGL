@@ -1,7 +1,10 @@
-﻿using System.Diagnostics;
-using VRageMath;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Text;
 
-namespace ClosedGL
+namespace VRageMath
 {
     // Workaround because .NET XML serializer is stupid and does not like enum inside static class
     public /*static*/ class Base6Directions
@@ -23,12 +26,12 @@ namespace ClosedGL
         [Flags]
         public enum DirectionFlags : byte
         {
-            Forward = 1 << (int)Direction.Forward,
+            Forward  = 1 << (int)Direction.Forward,
             Backward = 1 << (int)Direction.Backward,
-            Left = 1 << (int)Direction.Left,
-            Right = 1 << (int)Direction.Right,
-            Up = 1 << (int)Direction.Up,
-            Down = 1 << (int)Direction.Down,
+            Left     = 1 << (int)Direction.Left,
+            Right    = 1 << (int)Direction.Right,
+            Up       = 1 << (int)Direction.Up,
+            Down     = 1 << (int)Direction.Down,
             All = Forward | Backward | Left | Right | Up | Down,
         }
 
@@ -50,7 +53,7 @@ namespace ClosedGL
             Direction.Down,
         };
 
-        public static readonly Vector3[] Directions =
+        public static readonly Vector3[] Directions = 
         {
             Vector3.Forward,
             Vector3.Backward,
@@ -113,7 +116,7 @@ namespace ClosedGL
 
         public static Vector3 GetVector(int direction)
         {
-            direction %= 6;
+            direction = direction % 6;
             return Directions[direction];
         }
 
@@ -124,7 +127,7 @@ namespace ClosedGL
 
         public static Vector3I GetIntVector(int direction)
         {
-            direction %= 6;
+            direction = direction % 6;
             return IntDirections[direction];
         }
 
@@ -212,39 +215,45 @@ namespace ClosedGL
 
         public static Direction GetForward(Quaternion rot)
         {
-            Vector3.Transform(ref Vector3.Forward, ref rot, out Vector3 rotatedForward);
+            Vector3 rotatedForward;
+            Vector3.Transform(ref Vector3.Forward, ref rot, out rotatedForward);
             return GetDirection(ref rotatedForward);
         }
 
         public static Direction GetForward(ref Quaternion rot)
         {
-            Vector3.Transform(ref Vector3.Forward, ref rot, out Vector3 rotatedForward);
+            Vector3 rotatedForward;
+            Vector3.Transform(ref Vector3.Forward, ref rot, out rotatedForward);
             return GetDirection(ref rotatedForward);
         }
 
         public static Direction GetForward(ref Matrix rotation)
         {
             Debug.Assert(rotation.IsRotation());
-            Vector3.TransformNormal(ref Vector3.Forward, ref rotation, out Vector3 rotatedForward);
+            Vector3 rotatedForward;
+            Vector3.TransformNormal(ref Vector3.Forward, ref rotation, out rotatedForward);
             return GetDirection(ref rotatedForward);
         }
 
         public static Direction GetUp(Quaternion rot)
         {
-            Vector3.Transform(ref Vector3.Up, ref rot, out Vector3 rotatedUp);
+            Vector3 rotatedUp;
+            Vector3.Transform(ref Vector3.Up, ref rot, out rotatedUp);
             return GetDirection(ref rotatedUp);
         }
 
         public static Direction GetUp(ref Quaternion rot)
         {
-            Vector3.Transform(ref Vector3.Up, ref rot, out Vector3 rotatedUp);
+            Vector3 rotatedUp;
+            Vector3.Transform(ref Vector3.Up, ref rot, out rotatedUp);
             return GetDirection(ref rotatedUp);
         }
 
         public static Direction GetUp(ref Matrix rotation)
         {
             Debug.Assert(rotation.IsRotation());
-            Vector3.TransformNormal(ref Vector3.Up, ref rotation, out Vector3 rotatedUp);
+            Vector3 rotatedUp;
+            Vector3.TransformNormal(ref Vector3.Up, ref rotation, out rotatedUp);
             return GetDirection(ref rotatedUp);
         }
 
@@ -270,7 +279,7 @@ namespace ClosedGL
 
         public static Direction GetLeft(Direction up, Direction forward)
         {
-            return LeftDirections[(int)forward * 6 + (int)up];
+            return LeftDirections[(int)forward*6 + (int)up];
         }
 
         public static Direction GetOppositeDirection(Direction dir)
