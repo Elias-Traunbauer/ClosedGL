@@ -5,7 +5,7 @@ using VRageMath.PackedVector;
 namespace VRageMath
 {
     //  Integer version of Vector4, not yet fully implemented
-    [ProtoBuf.ProtoContract]
+    
     public struct Vector4I : IComparable<Vector4I>
     {
         

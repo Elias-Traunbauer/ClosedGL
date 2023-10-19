@@ -5,7 +5,7 @@ using System.Text;
 
 namespace VRageMath
 {
-    [ProtoBuf.ProtoContract]
+    
     public struct Vector4UByte
     {
         

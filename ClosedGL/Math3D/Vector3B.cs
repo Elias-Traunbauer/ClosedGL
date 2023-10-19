@@ -6,7 +6,7 @@ namespace VRageMath
 {
 
     //  Sbyte version of Vector3, not yet fully implemented
-    [ProtoBuf.ProtoContract]
+    
     public struct Vector3B
     {
         

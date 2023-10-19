@@ -272,18 +272,6 @@ namespace VRageMath
             return this.X.GetHashCode() + this.Y.GetHashCode();
         }
 
-        public bool IsValid()
-        {
-            // We can multiply, when one component is infinity, others will be too. When one is NaN, others will be too.
-            return (X * Y).IsValid();
-        }
-
-        [Conditional("DEBUG")]
-        public void AssertIsValid()
-        {
-            Debug.Assert(IsValid());
-        }
-
         /// <summary>
         /// Calculates the length of the vector.
         /// </summary>

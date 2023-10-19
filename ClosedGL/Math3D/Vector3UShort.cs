@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace VRageMath
 {
     //  ushort version of Vector3, not yet fully implemented
-    [ProtoBuf.ProtoContract]
+    
     public struct Vector3Ushort
     {
         

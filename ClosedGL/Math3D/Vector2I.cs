@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace VRageMath
 {
     //  Integer version of Vector2, not yet fully implemented
-    [ProtoBuf.ProtoContract]
+    
     public struct Vector2I
     {
         public static readonly ComparerClass Comparer = new ComparerClass();

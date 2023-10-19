@@ -328,18 +328,6 @@ namespace VRageMath
             Z = s * v0.Z + rt * v1.Z;
         }
 
-        public bool IsValid()
-        {
-            // We can multiply, when one component is infinity, others will be too. When one is NaN, others will be too.
-            return (X * Y * Z).IsValid();
-        }
-
-        [Conditional("DEBUG")]
-        public void AssertIsValid()
-        {
-            Debug.Assert(IsValid());
-        }
-
         public static bool IsUnit(ref Vector3 value)
         {
             var length = value.LengthSquared();
@@ -1908,20 +1896,6 @@ namespace VRageMath
             return null;
         }
 #endif // XB1
-    }
-
-    public static class NullableVector3Extensions
-    {
-        public static bool IsValid(this Vector3? value)
-        {
-            return !value.HasValue || value.Value.IsValid();
-        }
-
-        [Conditional("DEBUG")]
-        public static void AssertIsValid(this Vector3? value)
-        {
-            Debug.Assert(value.IsValid());
-        }
     }
 
 }

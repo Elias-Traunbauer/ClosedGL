@@ -10,7 +10,6 @@ namespace VRageMath
     /// Defines a four-dimensional vector (x,y,z,w), which is used to efficiently rotate an object about the (x, y, z) vector by the angle theta, where w = cos(theta/2).
     /// Uses double precision floating point numbers for calculation and storage
     /// </summary>
-    [Serializable, ProtoBuf.ProtoContract]
     public struct QuaternionD
     {
         public static QuaternionD Identity = new QuaternionD(0.0, 0.0, 0.0, 1.0);

@@ -15,11 +15,10 @@ namespace RenderTest
             GameObject go = new GameObject();
             Camera camera = new Camera();
 
-            camera.Position = new Vector3(0, 1, -1);
+            camera.FieldOfView = 3f;
+            camera.Position = new Vector3(0, 1, 1);
 
-            Vector3 projectionPoint = new Vector3(0, 1, 1);
-
-            var result = camera.ProjectPoint(projectionPoint);
+            var result = camera.ProjectPoint(go.Position);
 
             MessageBox.Show(result?.ToString());
         }

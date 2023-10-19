@@ -374,37 +374,37 @@ namespace VRageMath
 
         static System.Random _random;
 
-        // CH: TODO: This function looks weird.
-        // I'd delete it, but have respect towards someone else's code. If you need it, consider doing it in a better way.
-        public Vector3 RandomPoint()
-        {
-            if (_random == null)
-            {
-                if (VRage.Library.Utils.MyRandom.DisableRandomSeed)
-                {
-                    _random = new Random(1);
-                }
-                else
-                {
-                    _random = new Random();
-                }
-            }
+        //// CH: TODO: This function looks weird.
+        //// I'd delete it, but have respect towards someone else's code. If you need it, consider doing it in a better way.
+        //public Vector3 RandomPoint()
+        //{
+        //    if (_random == null)
+        //    {
+        //        if (VRage.Library.Utils.MyRandom.DisableRandomSeed)
+        //        {
+        //            _random = new Random(1);
+        //        }
+        //        else
+        //        {
+        //            _random = new Random();
+        //        }
+        //    }
             
-            Vector3 random = new Vector3();
-            Vector3 randomPoint;
+        //    Vector3 random = new Vector3();
+        //    Vector3 randomPoint;
 
-            do
-            {
-                random.X = 2.0f * (float)_random.NextDouble() - 1.0f;
-                random.Y = 2.0f * (float)_random.NextDouble() - 1.0f;
-                random.Z = 2.0f * (float)_random.NextDouble() - 1.0f;
-                randomPoint = Vector3.Cross(random, Normal);
-            } while (randomPoint == Vector3.Zero);
+        //    do
+        //    {
+        //        random.X = 2.0f * (float)_random.NextDouble() - 1.0f;
+        //        random.Y = 2.0f * (float)_random.NextDouble() - 1.0f;
+        //        random.Z = 2.0f * (float)_random.NextDouble() - 1.0f;
+        //        randomPoint = Vector3.Cross(random, Normal);
+        //    } while (randomPoint == Vector3.Zero);
 
-            randomPoint.Normalize();
-            randomPoint *= (float)Math.Sqrt(_random.NextDouble());
+        //    randomPoint.Normalize();
+        //    randomPoint *= (float)Math.Sqrt(_random.NextDouble());
 
-            return randomPoint;
-        }
+        //    return randomPoint;
+        //}
     }
 }

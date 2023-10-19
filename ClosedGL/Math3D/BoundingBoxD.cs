@@ -1282,12 +1282,5 @@ namespace VRageMath
                 Max.Z = minCenter.Z + minimumSize * 0.5;
             }
         }
-
-        [Conditional("DEBUG")]
-        public void AssertIsValid()
-        {
-            Min.AssertIsValid();
-            Max.AssertIsValid();
-        }
     }
 }

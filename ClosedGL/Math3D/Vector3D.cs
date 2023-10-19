@@ -350,6 +350,12 @@ namespace VRageMath
             return vector3;
         }
 
+        public static Vector3D operator *(Vector3D vector, Quaternion quaternion)
+        {
+            var rotationMatrix = Matrix.CreateFromQuaternion(quaternion);
+            return Vector3D.Rotate(vector, rotationMatrix);
+        }
+
         /// <summary>
         /// Divides the components of a vector by the components of another vector.
         /// </summary>
@@ -412,18 +418,6 @@ namespace VRageMath
             X = s * v0.X + rt * v1.X;
             Y = s * v0.Y + rt * v1.Y;
             Z = s * v0.Z + rt * v1.Z;
-        }
-
-        public bool IsValid()
-        {
-            // We can multiply, when one component is infinity, others will be too. When one is NaN, others will be too.
-            return (X * Y * Z).IsValid();
-        }
-
-        [Conditional("DEBUG")]
-        public void AssertIsValid()
-        {
-            Debug.Assert(IsValid());
         }
 
         public static bool IsUnit(ref Vector3D value)
@@ -2160,21 +2154,6 @@ namespace VRageMath
             abs.Y = Math.Abs(vector3D.Y);
             abs.Z = Math.Abs(vector3D.Z);
         }
-    }
-
-    public static class NullableVector3DExtensions
-    {
-        public static bool IsValid(this Vector3D? value)
-        {
-            return !value.HasValue || value.Value.IsValid();
-        }
-
-        [Conditional("DEBUG")]
-        public static void AssertIsValid(this Vector3D? value)
-        {
-            Debug.Assert(value.IsValid());
-        }
-
     }
 
 }

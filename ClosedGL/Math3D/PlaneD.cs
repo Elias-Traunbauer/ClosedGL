@@ -385,38 +385,38 @@ namespace VRageMath
 
         static System.Random _random;
 
-        // CH: TODO: This function looks weird.
-        // I'd delete it, but have respect towards someone else's code. If you need it, consider doing it in a better way.
-        public Vector3D RandomPoint()
-        {
-            if (_random == null)
-            {
-                if (VRage.Library.Utils.MyRandom.DisableRandomSeed)
-                {
-                    _random = new Random(1);
-                }
-                else
-                {
-                    _random = new Random();
-                }
-            }
+        //// CH: TODO: This function looks weird.
+        //// I'd delete it, but have respect towards someone else's code. If you need it, consider doing it in a better way.
+        //public Vector3D RandomPoint()
+        //{
+        //    if (_random == null)
+        //    {
+        //        if (VRage.Library.Utils.MyRandom.DisableRandomSeed)
+        //        {
+        //            _random = new Random(1);
+        //        }
+        //        else
+        //        {
+        //            _random = new Random();
+        //        }
+        //    }
 
-            Vector3D random = new Vector3D();
-            Vector3D randomPoint;
+        //    Vector3D random = new Vector3D();
+        //    Vector3D randomPoint;
 
-            do
-            {
-                random.X = 2.0f * (double)_random.NextDouble() - 1.0f;
-                random.Y = 2.0f * (double)_random.NextDouble() - 1.0f;
-                random.Z = 2.0f * (double)_random.NextDouble() - 1.0f;
-                randomPoint = Vector3D.Cross(random, Normal);
-            } while (randomPoint == Vector3D.Zero);
+        //    do
+        //    {
+        //        random.X = 2.0f * (double)_random.NextDouble() - 1.0f;
+        //        random.Y = 2.0f * (double)_random.NextDouble() - 1.0f;
+        //        random.Z = 2.0f * (double)_random.NextDouble() - 1.0f;
+        //        randomPoint = Vector3D.Cross(random, Normal);
+        //    } while (randomPoint == Vector3D.Zero);
 
-            randomPoint.Normalize();
-            randomPoint *= (double)Math.Sqrt(_random.NextDouble());
+        //    randomPoint.Normalize();
+        //    randomPoint *= (double)Math.Sqrt(_random.NextDouble());
 
-            return randomPoint;
-        }
+        //    return randomPoint;
+        //}
 
         public double DistanceToPoint(Vector3D point)
         {

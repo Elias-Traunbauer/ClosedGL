@@ -1197,5 +1197,10 @@ namespace VRageMath
             }
             return largestIndex;
         }
+
+        public static Quaternion CreateFromAxisAngle(Vector3 up, double pI)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

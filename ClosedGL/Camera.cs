@@ -8,7 +8,7 @@ namespace ClosedGL
     /// </summary>
     public class Camera : GameObject
     {
-        private float FieldOfView
+        public float FieldOfView
         {
             get;
             set;
@@ -27,7 +27,7 @@ namespace ClosedGL
         /// <returns>Screen coordinate in pixels or null if projection is not on lcd</returns>
         public Vector2? ProjectPoint(Vector3D worldPoint)
         {
-            var viewPoint = Vector3D.Backward * Rotation;
+            var viewPoint = Vector3D.Forward * Rotation;
 
             // Convert worldPosition into a world direction
             Vector3D worldDirection = worldPoint - Position;

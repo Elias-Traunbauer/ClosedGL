@@ -6,7 +6,7 @@ using System.Text;
 
 namespace VRageMath
 {
-    [ProtoBuf.ProtoContract]
+    
     public struct Vector3UByte
     {
         public class EqualityComparer : IEqualityComparer<Vector3UByte>, IComparer<Vector3UByte>
