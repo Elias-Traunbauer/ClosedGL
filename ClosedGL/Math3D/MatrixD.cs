@@ -386,7 +386,7 @@ namespace VRageMath
         /// <summary>
         /// Same result as Matrix.CreateScale(scale) * matrix, but much faster
         /// </summary>
-		[Unsharper.UnsharperDisableReflection()]
+		
         public static void Rescale(ref MatrixD matrix, double scale)
         {
             matrix.M11 *= scale;
@@ -405,7 +405,7 @@ namespace VRageMath
         /// <summary>
         /// Same result as Matrix.CreateScale(scale) * matrix, but much faster
         /// </summary>
-		[Unsharper.UnsharperDisableReflection()]
+		
         public static void Rescale(ref MatrixD matrix, float scale)
         {
             matrix.M11 *= scale;
@@ -424,7 +424,7 @@ namespace VRageMath
         /// <summary>
         /// Same result as Matrix.CreateScale(scale) * matrix, but much faster
         /// </summary>
-		[Unsharper.UnsharperDisableReflection()]
+		
         public static void Rescale(ref MatrixD matrix, ref Vector3D scale)
         {
             matrix.M11 *= scale.X;
@@ -440,14 +440,14 @@ namespace VRageMath
             matrix.M33 *= scale.Z;
         }
 
-		[Unsharper.UnsharperDisableReflection()]
+		
         public static MatrixD Rescale(MatrixD matrix, double scale)
         {
             Rescale(ref matrix, scale);
             return matrix;
         }
 
-		[Unsharper.UnsharperDisableReflection()]
+		
         public static MatrixD Rescale(MatrixD matrix, Vector3D scale)
         {
             Rescale(ref matrix, ref scale);

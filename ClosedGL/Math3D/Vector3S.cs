@@ -7,11 +7,11 @@ namespace VRageMath
     [ProtoBuf.ProtoContract]
     public struct Vector3S
     {
-        [ProtoBuf.ProtoMember]
+        
         public short X;
-        [ProtoBuf.ProtoMember]
+        
         public short Y;
-        [ProtoBuf.ProtoMember]
+        
         public short Z;
 
         public static Vector3S Up = new Vector3S(0, 1, 0);

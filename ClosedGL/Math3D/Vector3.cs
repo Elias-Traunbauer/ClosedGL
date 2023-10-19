@@ -16,8 +16,8 @@ namespace VRageMath
     /// <summary>
     /// Defines a vector with three components.
     /// </summary>
-    [ProtoBuf.ProtoContract, Serializable]
-    [Unsharper.UnsharperDisableReflection()]
+    
+    
 #if !XB1 // XB1_SYNC_SERIALIZER_NOEMIT
     public struct Vector3 : IEquatable<Vector3>
 #else // XB1
@@ -45,17 +45,17 @@ namespace VRageMath
         /// <summary>
         /// Gets or sets the x-component of the vector.
         /// </summary>
-        [ProtoBuf.ProtoMember]
+        
         public float X;
         /// <summary>
         /// Gets or sets the y-component of the vector.
         /// </summary>
-        [ProtoBuf.ProtoMember]
+        
         public float Y;
         /// <summary>
         /// Gets or sets the z-component of the vector.
         /// </summary>
-        [ProtoBuf.ProtoMember]
+        
         public float Z;
 
 

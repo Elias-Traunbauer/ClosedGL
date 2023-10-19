@@ -7,7 +7,6 @@ namespace VRageMath
     /// <summary>
     /// Defines an axis-aligned box-shaped 3D volume.
     /// </summary>
-    [ProtoBuf.ProtoContract, Serializable]
     public struct BoundingBoxI : IEquatable<BoundingBoxI>
     {
         /// <summary>
@@ -17,12 +16,10 @@ namespace VRageMath
         /// <summary>
         /// The minimum point the BoundingBoxI contains.
         /// </summary>
-        [ProtoBuf.ProtoMember]
         public Vector3I Min;
         /// <summary>
         /// The maximum point the BoundingBoxI contains.
         /// </summary>
-        [ProtoBuf.ProtoMember]
         public Vector3I Max;
 
         /// <summary>
@@ -130,7 +127,6 @@ namespace VRageMath
         /// Gets the array of points that make up the corners of the BoundingBoxI.
         /// </summary>
         /// <param name="corners">An existing array of at least 8 Vector3I points where the corners of the BoundingBoxI are written.</param>
-		[Unsharper.UnsharperDisableReflection()]
 		public unsafe void GetCornersUnsafe(Vector3I* corners)
         {
             corners[0].X = this.Min.X;

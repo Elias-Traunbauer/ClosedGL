@@ -17,12 +17,10 @@ namespace VRageMath
         /// <summary>
         /// The minimum point the BoundingBox2D contains.
         /// </summary>
-        [ProtoBuf.ProtoMember]
         public Vector2D Min;
         /// <summary>
         /// The maximum point the BoundingBox2D contains.
         /// </summary>
-        [ProtoBuf.ProtoMember]
         public Vector2D Max;
 
         /// <summary>

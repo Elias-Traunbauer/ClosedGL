@@ -72,7 +72,7 @@ namespace VRageMath
     }
 
 
-    [ProtoBuf.ProtoContract, Serializable]
+    
     public struct Vector3I : IEquatable<Vector3I>, IComparable<Vector3I>
     {
 
@@ -108,11 +108,11 @@ namespace VRageMath
         public static Vector3I Forward = new Vector3I(0, 0, -1);
         public static Vector3I Backward = new Vector3I(0, 0, 1);
 
-        [ProtoBuf.ProtoMember]
+        
         public int X;
-        [ProtoBuf.ProtoMember]
+        
         public int Y;
-        [ProtoBuf.ProtoMember]
+        
         public int Z;
 
         public Vector3I(int xyz)

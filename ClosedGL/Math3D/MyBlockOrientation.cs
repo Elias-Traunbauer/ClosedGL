@@ -1,5 +1,4 @@
-﻿using ProtoBuf;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -7,15 +6,15 @@ using System.Text;
 
 namespace VRageMath
 {
-    [ProtoContract]
+    
     public struct MyBlockOrientation
     {
         public static readonly MyBlockOrientation Identity = new MyBlockOrientation(Base6Directions.Direction.Forward, Base6Directions.Direction.Up);
 
-        [ProtoMember]
+        
         public Base6Directions.Direction Forward;
         
-        [ProtoMember]
+        
         public Base6Directions.Direction Up;
 
         public Base6Directions.Direction Left

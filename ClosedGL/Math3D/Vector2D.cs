@@ -7,7 +7,7 @@ namespace VRageMath
     /// <summary>
     /// Defines a vector with two components.
     /// </summary>
-    [ProtoBuf.ProtoContract, Serializable]
+    
     public struct Vector2D : IEquatable<Vector2D>
     {
         public static Vector2D Zero  = new Vector2D();
@@ -19,12 +19,12 @@ namespace VRageMath
         /// <summary>
         /// Gets or sets the x-component of the vector.
         /// </summary>
-        [ProtoBuf.ProtoMember]
+        
         public double X;
         /// <summary>
         /// Gets or sets the y-component of the vector.
         /// </summary>
-        [ProtoBuf.ProtoMember]
+        
         public double Y;
 
         static Vector2D()

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using ProtoBuf;
 
 namespace VRageMath
 {
@@ -17,12 +16,10 @@ namespace VRageMath
         /// <summary>
         /// The minimum point the BoundingBox2I contains.
         /// </summary>
-        [ProtoMember]
         public Vector2I Min;
         /// <summary>
         /// The maximum point the BoundingBox2I contains.
         /// </summary>
-        [ProtoMember]
         public Vector2I Max;
 
         /// <summary>

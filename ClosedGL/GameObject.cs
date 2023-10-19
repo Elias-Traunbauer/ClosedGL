@@ -9,17 +9,18 @@ namespace ClosedGL
 {
     public class GameObject
     {
-        public Vector3D Position { get; set; }
-        public Vector3D Rotation { get; set; }
-        public Vector3D Scale { get; set; }
+        public Vector3 Position { get; set; }
+        public Quaternion Rotation { get; set; }
+        public Vector3 Scale { get; set; }
 
-        public MatrixD WorldMatrix
+        public Matrix WorldMatrix
         {
             get
             {
-                var worldUp = Vector3D.Up * Rotation;
-                var worldForward = Vector3D.Forward * Rotation;
-                var worldMatrix = MatrixD.CreateWorld(Position, worldForward, worldUp);
+                var rotationMatrix = Matrix.CreateFromQuaternion(Rotation);
+                var worldUp = Vector3D.Rotate(Vector3D.Up, rotationMatrix);
+                var worldForward = Vector3D.Rotate(Vector3D.Forward, rotationMatrix);
+                var worldMatrix = Matrix.CreateWorld(Position, worldForward, worldUp);
                 return worldMatrix;
             }
         }

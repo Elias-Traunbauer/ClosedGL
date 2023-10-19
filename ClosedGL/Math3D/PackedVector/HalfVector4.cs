@@ -5,7 +5,7 @@ namespace VRageMath.PackedVector
     /// <summary>
     /// Packed vector type containing four 16-bit floating-point values.
     /// </summary>
-	[Unsharper.UnsharperDisableReflection()]
+	
 	public struct HalfVector4 : IPackedVector<ulong>, IPackedVector, IEquatable<HalfVector4>
     {
         public ulong PackedValue;

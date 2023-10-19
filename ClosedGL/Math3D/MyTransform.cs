@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using VRage.Serialization;
 #if XB1 // XB1_SYNC_SERIALIZER_NOEMIT
 using System.Reflection;
 using VRage.Reflection;
@@ -16,7 +15,7 @@ namespace VRageMath
     public struct MyTransform : IMySetGetMemberDataHelper
 #endif // XB1
     {
-        [Serialize(MyPrimitiveFlags.Normalized)]
+        
         public Quaternion Rotation;
         public Vector3 Position;
         public Matrix TransformMatrix

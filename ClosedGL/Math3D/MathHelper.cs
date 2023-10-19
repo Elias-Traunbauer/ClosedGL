@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using VRage;
+
 
 namespace VRageMath
 {
@@ -150,17 +150,6 @@ namespace VRageMath
         {
             value = (double)value > (double)max ? max : value;
             value = (double)value < (double)min ? min : value;
-            return value;
-        }
-
-        /// <summary>
-        /// Restricts a value to be within a specified range. Reference page contains links to related code samples.
-        /// </summary>
-        /// <param name="value">The value to clamp.</param><param name="min">The minimum value. If value is less than min, min will be returned.</param><param name="max">The maximum value. If value is greater than max, max will be returned.</param>
-        public static MyFixedPoint Clamp(MyFixedPoint value, MyFixedPoint min, MyFixedPoint max)
-        {
-            value = value > max ? max : value;
-            value = value < min ? min : value;
             return value;
         }
 

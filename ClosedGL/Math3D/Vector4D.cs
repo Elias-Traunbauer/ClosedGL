@@ -6,7 +6,7 @@ namespace VRageMath
     /// <summary>
     /// Defines a vector with four components.
     /// </summary>
-    [ProtoBuf.ProtoContract, Serializable]
+    
     public struct Vector4D : IEquatable<Vector4>
     {
         public static Vector4D Zero = new Vector4D();
@@ -18,22 +18,22 @@ namespace VRageMath
         /// <summary>
         /// Gets or sets the x-component of the vector.
         /// </summary>
-        [ProtoBuf.ProtoMember]
+        
         public double X;
         /// <summary>
         /// Gets or sets the y-component of the vector.
         /// </summary>
-        [ProtoBuf.ProtoMember]
+        
         public double Y;
         /// <summary>
         /// Gets or sets the z-component of the vector.
         /// </summary>
-        [ProtoBuf.ProtoMember]
+        
         public double Z;
         /// <summary>
         /// Gets or sets the w-component of the vector.
         /// </summary>
-        [ProtoBuf.ProtoMember]
+        
         public double W;
 
         static Vector4D()

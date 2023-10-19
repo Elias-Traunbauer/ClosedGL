@@ -7,7 +7,7 @@ namespace VRageMath
     /// <summary>
     /// Defines a vector with two components.
     /// </summary>
-    [ProtoBuf.ProtoContract, Serializable]
+    
     public struct Vector2 : IEquatable<Vector2>
     {
         public static Vector2 Zero  = new Vector2();
@@ -19,12 +19,12 @@ namespace VRageMath
         /// <summary>
         /// Gets or sets the x-component of the vector.
         /// </summary>
-        [ProtoBuf.ProtoMember]
+        
         public float X;
         /// <summary>
         /// Gets or sets the y-component of the vector.
         /// </summary>
-        [ProtoBuf.ProtoMember]
+        
         public float Y;
 
         static Vector2()
@@ -499,7 +499,7 @@ namespace VRageMath
             result.Y = num6;
         }
 		
-		[Unsharper.UnsharperDisableReflection()]
+		
         public static Vector2 ClampToSphere(Vector2 vector, float radius)
         {
             float lsq = vector.LengthSquared();
@@ -511,7 +511,7 @@ namespace VRageMath
             return vector;
         }
 
-		[Unsharper.UnsharperDisableReflection()]
+		
 		public static void ClampToSphere(ref Vector2 vector, float radius)
         {
             float lsq = vector.LengthSquared();

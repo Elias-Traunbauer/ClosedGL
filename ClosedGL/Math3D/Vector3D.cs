@@ -9,7 +9,7 @@ namespace VRageMath
     /// <summary>
     /// Defines a vector with three components.
     /// </summary>
-    [ProtoBuf.ProtoContract, Serializable]
+    
     public struct Vector3D : IEquatable<Vector3D>
     {
         public static Vector3D Zero = new Vector3D();
@@ -31,17 +31,17 @@ namespace VRageMath
         /// <summary>
         /// Gets or sets the x-component of the vector.
         /// </summary>
-        [ProtoBuf.ProtoMember]
+        
         public double X;
         /// <summary>
         /// Gets or sets the y-component of the vector.
         /// </summary>
-        [ProtoBuf.ProtoMember]
+        
         public double Y;
         /// <summary>
         /// Gets or sets the z-component of the vector.
         /// </summary>
-        [ProtoBuf.ProtoMember]
+        
         public double Z;
 
 
@@ -1189,7 +1189,7 @@ namespace VRageMath
             result.Z = num9;
         }
 
-		[Unsharper.UnsharperDisableReflection()]
+		
 		public static Vector3D ClampToSphere(Vector3D vector, double radius)
         {
             double lsq = vector.LengthSquared();
@@ -1201,7 +1201,7 @@ namespace VRageMath
             return vector;
         }
 
-		[Unsharper.UnsharperDisableReflection()]
+		
 		public static void ClampToSphere(ref Vector3D vector, double radius)
         {
             double lsq = vector.LengthSquared();
@@ -2016,7 +2016,7 @@ namespace VRageMath
             result.Z = value1.Z * num;
         }
 
-		[Unsharper.UnsharperDisableReflection()]
+		
 		public static Vector3D CalculatePerpendicularVector(Vector3D v)
         {
             Vector3D result;
@@ -2024,7 +2024,7 @@ namespace VRageMath
             return result;
         }
 
-		[Unsharper.UnsharperDisableReflection()]
+		
 		public void CalculatePerpendicularVector(out Vector3D result)
         {
             const double threshold = 0.0001f;

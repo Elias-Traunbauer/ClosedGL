@@ -4,13 +4,13 @@ using ProtoBuf;
 
 namespace VRageMath
 {
-    [ProtoContract]
+    
     public struct SerializableRange
     {
-        [ProtoMember]
+        
         [XmlAttribute(AttributeName = "Min")]
         public float Min;
-        [ProtoMember]
+        
         [XmlAttribute(AttributeName = "Max")]
         public float Max;
 

@@ -7,7 +7,7 @@ namespace VRageMath
     /// <summary>
     /// Defines a four-dimensional vector (x,y,z,w), which is used to efficiently rotate an object about the (x, y, z) vector by the angle theta, where w = cos(theta/2).
     /// </summary>
-    [Serializable, ProtoBuf.ProtoContract]
+    [Serializable]
     public struct Quaternion : IEquatable<Quaternion>
     {
         public static Quaternion Identity = new Quaternion(0.0f, 0.0f, 0.0f, 1f);
@@ -15,22 +15,22 @@ namespace VRageMath
         /// <summary>
         /// Specifies the x-value of the vector component of the quaternion.
         /// </summary>
-        [ProtoBuf.ProtoMember]
+        
         public float X;
         /// <summary>
         /// Specifies the y-value of the vector component of the quaternion.
         /// </summary>
-        [ProtoBuf.ProtoMember]
+        
         public float Y;
         /// <summary>
         /// Specifies the z-value of the vector component of the quaternion.
         /// </summary>
-        [ProtoBuf.ProtoMember]
+        
         public float Z;
         /// <summary>
         /// Specifies the rotation component of the quaternion.
         /// </summary>
-        [ProtoBuf.ProtoMember]
+        
         public float W;
 
         public Vector3 Forward
