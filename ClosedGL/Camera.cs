@@ -13,7 +13,7 @@ namespace ClosedGL
             get;
             set;
         } = 1f;
-        private readonly Vector3D Normal = Vector3D.Backward;
+        private readonly Vector3D Normal = Vector3D.Forward;
 
         public Camera()
         {
@@ -27,7 +27,7 @@ namespace ClosedGL
         /// <returns>Screen coordinate in pixels or null if projection is not on lcd</returns>
         public Vector2? ProjectPoint(Vector3D worldPoint)
         {
-            var viewPoint = Vector3D.Forward * Rotation;
+            var viewPoint = Vector3D.Backward * (180 - FieldOfView) * Rotation;
 
             // Convert worldPosition into a world direction
             Vector3D worldDirection = worldPoint - Position;
@@ -40,7 +40,7 @@ namespace ClosedGL
             //localRayDirection.Normalize();
 
             // project the plane onto the plane
-            Vector2? projectedLocalPoint = PlaneIntersection(Vector3D.Backward * FieldOfView, localRayDirection);
+            Vector2? projectedLocalPoint = PlaneIntersection(Vector3D.Backward * (180 - FieldOfView), localRayDirection);
             if (projectedLocalPoint != null)
             {
                 var projectedLocalPointNonNullable = (Vector2)projectedLocalPoint;

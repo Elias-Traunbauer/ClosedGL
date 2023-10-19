@@ -11,7 +11,9 @@ namespace ClosedGL
     {
         public Vector3 Position { get; set; }
         public Quaternion Rotation { get; set; }
-        public Vector3 Scale { get; set; }
+        public Vector3 Scale { get; set; } = Vector3.One;
+
+        public virtual Mesh? Mesh { get; set; }
 
         public Matrix WorldMatrix
         {

@@ -81,6 +81,12 @@ namespace VRageMath
             this.Z = (float)z;
         }
 
+        public static Vector3 operator *(Vector3 vector, Quaternion quaternion)
+        {
+            var rotationMatrix = Matrix.CreateFromQuaternion(quaternion);
+            return Vector3D.Rotate(vector, rotationMatrix);
+        }
+
         /// <summary>
         /// Creates a new instance of Vector3.
         /// </summary>
