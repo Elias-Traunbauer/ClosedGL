@@ -218,7 +218,7 @@ namespace RenderTest
                 g.DrawString("Vertices: " + projectedVertices.Count.ToString(), new Font("Arial", 12), Brushes.White, 0, 60);
 
                 // triangles
-                g.DrawString("Triangles: " + actualTriangles.Count.ToString(), new Font("Arial", 12), Brushes.White, 0, 80);
+                g.DrawString("Triangles: " + (actualTriangles.Count / 3).ToString(), new Font("Arial", 12), Brushes.White, 0, 80);
 
                 // unrendered frames
                 g.DrawString("Unrendered frames: " + unrenderedFrames.ToString(), new Font("Arial", 12), Brushes.White, 0, 40);
