@@ -119,7 +119,8 @@ namespace RenderTest
             List<int> triangles = new List<int>();
             int vertexOffset = 0;
 
-            foreach (var gameObject in gameObjects)
+            // go through game objects by furthest to closest
+            foreach (var gameObject in gameObjects.OrderBy(x => Vector3.Distance(x.Position, camera.Position)))
             {
                 if (gameObject.Mesh == null)
                 {
@@ -238,6 +239,8 @@ namespace RenderTest
 
                     try
                     {
+                        g.FillPolygon(Brushes.Gray, new PointF[] { new PointF(v1.X, v1.Y), new PointF(v2.X, v2.Y), new PointF(v3.X, v3.Y) });
+
                         g.DrawLine(Pens.White, v1.X, v1.Y, v2.X, v2.Y);
                         g.DrawLine(Pens.White, v2.X, v2.Y, v3.X, v3.Y);
                         g.DrawLine(Pens.White, v3.X, v3.Y, v1.X, v1.Y);
