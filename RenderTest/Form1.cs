@@ -1,5 +1,6 @@
 using ClosedGL;
 using System.Diagnostics;
+using System.Windows.Forms;
 using VRageMath;
 
 namespace RenderTest
@@ -11,6 +12,14 @@ namespace RenderTest
             InitializeComponent();
         }
 
+        protected override void OnPaint(PaintEventArgs e)
+        {
+
+        }
+
+        Queue<int> lastFps = new Queue<int>();
+
+        PictureBox pb;
         bool closing = false;
 
         Vector2 PictureScale = new Vector2(10, -10);
@@ -26,8 +35,12 @@ namespace RenderTest
             GameObject go = new Cube();
             GameObject cub = new Cube();
             GameObject cub1 = new Cube();
+            GameObject cubi = new Cube();
             cub.Position = new Vector3(30, 19, -2);
             cub.Scale = new Vector3(5f);
+
+            cubi.Position = new Vector3(100, 19, -2);
+            cubi.Scale = new Vector3(5f);
 
             cub1.Position = new Vector3(30, 0, 0);
 
@@ -40,6 +53,13 @@ namespace RenderTest
 
             var t = new Thread(() =>
             {
+                pb = new MyPb();
+                
+                Invoke(() =>
+                {
+                    Controls.Add(pb);
+                });
+
                 Stopwatch sw = new Stopwatch();
                 float x = 0;
                 sw.Start();
@@ -47,15 +67,21 @@ namespace RenderTest
                 while (!closing)
                 {
                     sw.Stop();
-                    var deltaTime = sw.ElapsedMilliseconds / 1000f;
+                    var deltaTime = (sw.ElapsedTicks / 10000d) / 1000d;
 
                     x += 2f * (float)deltaTime;
 
-                    //camera.FieldOfView = (x * 10) % 90;
+                    //camera.FieldOfView = (float)Math.Sin(x) * 35 + 60;
 
-                    Vector3 cubPos = Vector3.Up * 30 * Quaternion.CreateFromAxisAngle(Vector3.Forward, x * 0.7f);
+                    Vector3 cubPos = Vector3.Up * 30 * Quaternion.CreateFromAxisAngle(Vector3.Forward, x * 0.7f + (float)Math.Sin(x));
                     cub.Position = cubPos;
-                    cub1.Scale = new Vector3(frameCount % 100f / 5);
+
+                    Vector3 cudddbPos = Vector3.Forward * 30 * Quaternion.CreateFromAxisAngle(Vector3.Right, x * 0.4f + (float)Math.Sin(x));
+                    cub1.Position = cudddbPos + Vector3.Left * 20;
+                    cub1.Scale = new Vector3(7);
+                    cub1.Rotation = Quaternion.CreateFromYawPitchRoll(0, (float)Math.Sin(x), 0);
+
+                    cubi.Position = new Vector3(frameCount % 220f - 110, 19, -2);
 
                     //Vector3 camPos = Vector3.Backward * 30 * Quaternion.CreateFromAxisAngle(Vector3.Up, x * 0.2f);
                     //camera.Position = camPos;
@@ -63,11 +89,14 @@ namespace RenderTest
                     //// let cam look at Vector3.Zero
                     //camera.Rotation = Quaternion.CreateFromYawPitchRoll(x * -0.2f, 0, 0);
 
-                    go.Rotation = Quaternion.CreateFromYawPitchRoll(x, x, x);
+                    go.Rotation = Quaternion.CreateFromYawPitchRoll((float)Math.Sin(x) * 3, x, x);
+
+                    go.Scale = new Vector3(20 + 15 * (float)Math.Sin(x), 5, 5);
+
                     //cub.Rotation = Quaternion.CreateFromYawPitchRoll(x, x, x);
 
                     renderSemaphore.WaitOne();
-                    Render(new List<GameObject>() { go, cub, cub1 }, camera, ("FieldOfView", camera.FieldOfView));
+                    Render(new List<GameObject>() { go, cub, cub1, cubi }, camera, ("FieldOfView", camera.FieldOfView), ("x", x));
 
                     sw.Restart();
 
@@ -156,14 +185,14 @@ namespace RenderTest
             Bitmap bitmap;
             try
             {
-                bitmap = new Bitmap(pictureBox1.Width, pictureBox1.Height);
+                bitmap = new Bitmap(pb.Width, pb.Height);
             }
             catch (Exception)
             {
                 renderSemaphore.Release();
                 return;
             }
-            Vector2 offset = new Vector2(pictureBox1.Width / 2, pictureBox1.Height / 2);
+            Vector2 offset = new Vector2(pb.Width / 2, pb.Height / 2);
 
             using (Graphics g = Graphics.FromImage(bitmap))
             {
@@ -176,14 +205,25 @@ namespace RenderTest
                 // fps
                 var now = DateTime.Now.Millisecond;
                 int fps = (int)(1000f / (now - lastFrameTimestamp));
+                lastFps.Enqueue(fps);
+                if (lastFps.Count > 10)
+                {
+                    lastFps.Dequeue();
+                }
                 lastFrameTimestamp = now;
-                g.DrawString("Fps: " + fps.ToString(), new Font("Arial", 12), Brushes.White, 0, 20);
+                g.DrawString("Fps: " + lastFps.Average().ToString(), new Font("Arial", 12), Brushes.White, 0, 20);
+
+                // vertices
+                g.DrawString("Vertices: " + projectedVertices.Count.ToString(), new Font("Arial", 12), Brushes.White, 0, 60);
+
+                // triangles
+                g.DrawString("Triangles: " + actualTriangles.Count.ToString(), new Font("Arial", 12), Brushes.White, 0, 80);
 
                 // unrendered frames
                 g.DrawString("Unrendered frames: " + unrenderedFrames.ToString(), new Font("Arial", 12), Brushes.White, 0, 40);
 
                 // values
-                int y = 60;
+                int y = 100;
                 foreach (var value in values)
                 {
                     g.DrawString(value.Item1 + ": " + value.Item2.ToString(), new Font("Arial", 12), Brushes.White, 0, y);
@@ -211,9 +251,12 @@ namespace RenderTest
 
             try
             {
-                pictureBox1.Image?.Dispose();
-                pictureBox1.Image = bitmap;
-                unrenderedFrames--;
+                lock (pb)
+                {
+                    pb.Image?.Dispose();
+                    pb.Image = bitmap;
+                    unrenderedFrames--;
+                }
             }
             catch (Exception)
             {
