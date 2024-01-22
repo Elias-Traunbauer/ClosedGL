@@ -13,10 +13,6 @@ Welcome to ClosedGL, a custom 3D rendering engine developed by Elias Traunbauer.
 
 ## Getting Started
 
-### Prerequisites
-
-- Ensure you have a compatible C++ development environment set up on your system.
-
 ### Installation
 
 1. Clone the repository:
@@ -28,17 +24,5 @@ Welcome to ClosedGL, a custom 3D rendering engine developed by Elias Traunbauer.
 ### Usage
 
 - The current version allows for rendering simple 3D meshes. Further documentation on usage will be provided as the project develops.
-
-## Contributing
-
-Contributions are highly appreciated. Whether it's feature development, bug fixes, or documentation, your input is welcome.
-
-## License
-
-Distributed under an open-source license. Please see the `LICENSE` file for more details.
-
-## Contact
-
-Elias Traunbauer - [Your Contact Information]
 
 Project Link: [https://github.com/Elias-Traunbauer/ClosedGL](https://github.com/Elias-Traunbauer/ClosedGL)
