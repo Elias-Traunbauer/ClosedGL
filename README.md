@@ -3,7 +3,7 @@
 
 ## Overview
 
-Welcome to ClosedGL, a custom 3D rendering engine developed by Elias Traunbauer. This project represents an ambitious foray into the world of 3D graphics, focusing on creating a streamlined, yet powerful rendering engine.
+Welcome to ClosedGL, a custom 3D rendering engine developed by Elias Traunbauer. This project represents an ambitious journey into the world of 3D graphics, focusing on creating a streamlined, yet powerful rendering engine.
 
 ## Features
 
