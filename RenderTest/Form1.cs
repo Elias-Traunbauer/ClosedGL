@@ -95,12 +95,11 @@ namespace RenderTest
 
                     //cub.Rotation = Quaternion.CreateFromYawPitchRoll(x, x, x);
 
-                    renderSemaphore.WaitOne();
-                    Render(new List<GameObject>() { go, cub, cub1, cubi }, camera, ("FieldOfView", camera.FieldOfView), ("x", x));
+                    Render(new List<GameObject>() { go, cub, cub1, cubi }, camera, ("FieldOfView", camera.FieldOfView), ("x", x), ("deltaTime", deltaTime));
 
                     sw.Restart();
 
-                    Thread.Sleep(TimeSpan.FromTicks(10000));
+                    Thread.Sleep(1);
                 }
                 criticalState.Release();
             });
@@ -112,6 +111,7 @@ namespace RenderTest
 
         private void Render(List<GameObject> gameObjects, Camera camera, params (string, object)[] values)
         {
+            renderSemaphore.WaitOne();
             frameCount++;
             // first collect all vertices and triangles to be rendered
 
