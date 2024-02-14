@@ -44,6 +44,19 @@ namespace RenderTest
 
             cub1.Position = new Vector3(30, 0, 0);
 
+            List<GameObject> gameObjects = new List<GameObject>() {  };
+
+            for (int x = 0; x < 20; x++)
+            {
+                for (int z = 0; z < 20; z++)
+                {
+                    GameObject g = new Cube();
+                    g.Position = new Vector3((x - 10) * 2, -15, (z - 10) * 2);
+                    g.Scale = new Vector3(3f);
+                    gameObjects.Add(g);
+                }   
+            }
+
             go.Scale = new Vector3(7);
             Camera camera = new()
             {
@@ -95,7 +108,7 @@ namespace RenderTest
 
                     //cub.Rotation = Quaternion.CreateFromYawPitchRoll(x, x, x);
 
-                    Render(new List<GameObject>() { go, cub, cub1, cubi }, camera, ("FieldOfView", camera.FieldOfView), ("x", x), ("deltaTime", deltaTime));
+                    Render(new List<GameObject>() { go, cub, cub1, cubi }.Concat(gameObjects).ToList(), camera, ("FieldOfView", camera.FieldOfView), ("x", x), ("deltaTime", deltaTime));
 
                     sw.Restart();
 
@@ -109,14 +122,17 @@ namespace RenderTest
             t.Start();
         }
 
+        private List<Vector3> vertices = new List<Vector3>();
+        private List<int> triangles = new List<int>();
+
         private void Render(List<GameObject> gameObjects, Camera camera, params (string, object)[] values)
         {
             renderSemaphore.WaitOne();
             frameCount++;
             // first collect all vertices and triangles to be rendered
 
-            List<Vector3> vertices = new List<Vector3>();
-            List<int> triangles = new List<int>();
+            vertices.Clear();
+            triangles.Clear();
             int vertexOffset = 0;
 
             // go through game objects by furthest to closest

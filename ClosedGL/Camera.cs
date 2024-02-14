@@ -12,7 +12,12 @@ namespace ClosedGL
         {
             get;
             set;
-        } = 1f;
+        } = 70f;
+        public float AspectRatio => RenderResolution.X / RenderResolution.Y;
+        public float NearClipPlane { get; set; } = 0.1f;      // Default near clip plane distance
+        public float FarClipPlane { get; set; } = 1000f;      // Default far clip plane distance
+        public Vector2 RenderResolution { get; set; } = new Vector2(1920, 1080);  // Default resolution (width, height)
+
         private readonly Vector3D Normal = Vector3D.Forward;
 
         public Camera()
@@ -47,7 +52,12 @@ namespace ClosedGL
                 // convert it to pixels
                 Vector2 projectedLocalPointPixels = projectedLocalPointNonNullable;
 
-                return projectedLocalPointPixels;
+                Vector2 projectedPixelPoint = new Vector2(
+                projectedLocalPointPixels.X * RenderResolution.X / 2f + RenderResolution.X / 2f,
+                projectedLocalPointPixels.Y * RenderResolution.Y / 2f + RenderResolution.Y / 2f
+                    );
+
+                return projectedPixelPoint;
             }
             return null;
         }
@@ -79,5 +89,14 @@ namespace ClosedGL
             return Vector3D.Transform(pos, matrix);
         }
 
+        /// <summary>
+        /// Method to update the projection matrix based on camera properties
+        /// </summary>
+        /// <returns>The updated projection matrix</returns>
+        public MatrixD UpdateProjectionMatrix()
+        {
+            // Calculate the projection matrix based on aspect ratio, field of view, near, and far clip planes
+            return MatrixD.CreatePerspectiveFieldOfView(MathHelper.ToRadians(FieldOfView), AspectRatio, NearClipPlane, FarClipPlane);
+        }
     }
 }
