@@ -3,9 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.7.34031.279
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RenderTest", "RenderTest\RenderTest.csproj", "{CD9C2802-8372-45A9-95F1-63C8E7897BE6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RenderTest", "RenderTest\RenderTest.csproj", "{CD9C2802-8372-45A9-95F1-63C8E7897BE6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClosedGL", "ClosedGL\ClosedGL.csproj", "{2522448E-C85F-467A-AA71-9F697AA83211}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ClosedGL", "ClosedGL\ClosedGL.csproj", "{2522448E-C85F-467A-AA71-9F697AA83211}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TriangleTest", "TriangleTest\TriangleTest.csproj", "{97705B32-696D-4C21-9037-73F698E7BA85}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{2522448E-C85F-467A-AA71-9F697AA83211}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2522448E-C85F-467A-AA71-9F697AA83211}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2522448E-C85F-467A-AA71-9F697AA83211}.Release|Any CPU.Build.0 = Release|Any CPU
+		{97705B32-696D-4C21-9037-73F698E7BA85}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{97705B32-696D-4C21-9037-73F698E7BA85}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{97705B32-696D-4C21-9037-73F698E7BA85}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{97705B32-696D-4C21-9037-73F698E7BA85}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

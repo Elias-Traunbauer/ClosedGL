@@ -33,6 +33,17 @@ namespace ClosedGL
                 1, 6, 2,
                 4, 0, 3,
                 4, 3, 7
+            },
+            UVs = new VRageMath.Vector2[]
+            {
+                new VRageMath.Vector2(0, 0),
+                new VRageMath.Vector2(0, 1),
+                new VRageMath.Vector2(1, 1),
+                new VRageMath.Vector2(1, 0),
+                new VRageMath.Vector2(0, 0),
+                new VRageMath.Vector2(0, 1),
+                new VRageMath.Vector2(1, 1),
+                new VRageMath.Vector2(1, 0)
             }
         };
     }

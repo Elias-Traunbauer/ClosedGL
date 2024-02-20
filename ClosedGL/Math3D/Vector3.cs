@@ -63,6 +63,29 @@ namespace VRageMath
         {
         }
 
+        public static Vector3 ClosestTo(Vector3 point, params Vector3[] points)
+        {
+            // return the closest point from the array, to the given point
+
+            if (points.Length == 0)
+                return Vector3.Zero;
+
+            Vector3 closest = points[0];
+
+            float closestDist = Vector3.DistanceSquared(point, closest);
+            for (int i = 1; i < points.Length; i++)
+            {
+                float dist = Vector3.DistanceSquared(point, points[i]);
+                if (dist < closestDist)
+                {
+                    closest = points[i];
+                    closestDist = dist;
+                }
+            }
+
+            return closest;
+        }
+
         /// <summary>
         /// Initializes a new instance of Vector3.
         /// </summary>
@@ -273,6 +296,11 @@ namespace VRageMath
             vector3.Y = value.Y * num;
             vector3.Z = value.Z * num;
             return vector3;
+        }
+
+        public static Vector3D operator /(Vector3 value1, double divisor)
+        {
+            return new Vector3D(value1.X / divisor, value1.Y / divisor, value1.Z / divisor);
         }
 
         public static Vector3 operator /(float value, Vector3 divider)

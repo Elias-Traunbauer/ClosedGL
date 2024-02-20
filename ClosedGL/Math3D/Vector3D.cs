@@ -162,6 +162,11 @@ namespace VRageMath
                 return false;
         }
 
+        public static Vector3D operator /(Vector3D value1, double divisor)
+        {
+            return new Vector3D(value1.X / divisor, value1.Y / divisor, value1.Z / divisor);
+        }
+
         /// <summary>
         /// Tests vectors for inequality.
         /// </summary>
@@ -366,20 +371,6 @@ namespace VRageMath
             vector3.X = value1.X / value2.X;
             vector3.Y = value1.Y / value2.Y;
             vector3.Z = value1.Z / value2.Z;
-            return vector3;
-        }
-
-        /// <summary>
-        /// Divides a vector by a scalar value.
-        /// </summary>
-        /// <param name="value">Source vector.</param><param name="divider">The divisor.</param>
-        public static Vector3D operator /(Vector3D value, double divider)
-        {
-            double num = 1 / divider;
-            Vector3D vector3;
-            vector3.X = value.X * num;
-            vector3.Y = value.Y * num;
-            vector3.Z = value.Z * num;
             return vector3;
         }
 
