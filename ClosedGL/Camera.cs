@@ -296,13 +296,19 @@ namespace ClosedGL
 
                                         byte[] pixel = texture.GetPixelAsBytes(textureX, textureY);
 
-                                        byte* currentLine = ptr + (y * stride);
+                                        //byte* currentLine = ptr + (y * stride);
 
-                                        // Set the pixel color in the bitmap
-                                        currentLine[x * bytesPerPixel] = pixel[2];
-                                        currentLine[x * bytesPerPixel + 1] = pixel[1];
-                                        currentLine[x * bytesPerPixel + 2] = pixel[0];
-                                        currentLine[x * bytesPerPixel + 3] = pixel[3];
+                                        //// Set the pixel color in the bitmap
+                                        //currentLine[x * bytesPerPixel] = pixel[2];
+                                        //currentLine[x * bytesPerPixel + 1] = pixel[1];
+                                        //currentLine[x * bytesPerPixel + 2] = pixel[0];
+                                        //currentLine[x * bytesPerPixel + 3] = pixel[3];
+
+                                        int index = (y * stride) + (x * bytesPerPixel);
+                                        ptr[index] = pixel[2];
+                                        ptr[index + 1] = pixel[1];
+                                        ptr[index + 2] = pixel[0];
+                                        ptr[index + 3] = pixel[3];
                                     }
                                 }
                             }
@@ -342,9 +348,9 @@ namespace ClosedGL
                 foreach (var vertex in gameObject.Mesh!.Vertices)
                 {
                     Vector3 worldVertexPosition = (vertex * gameObject.Rotation * gameObject.Scale) + Position;
-                    var localVertexPosition = TransformToLocal(worldVertexPosition);
+                    //var localVertexPosition = TransformToLocal(worldVertexPosition);
                     var localVertexPositionBeta = TransformToLocalBeta(worldVertexPosition);
-                    vertices.Add(localVertexPosition);
+                    vertices.Add(localVertexPositionBeta);
                 }
                 foreach (var triangle in gameObject.Mesh.Triangles)
                 {

@@ -46,5 +46,10 @@ namespace ClosedGL
                 new VRageMath.Vector2(1, 0)
             }
         };
+
+        public Cube()
+        {
+            Texture = new Texture("Textures\\triangle.png");
+        }
     }
 }

@@ -183,7 +183,7 @@ namespace RenderTest
                     camera.RenderResolution = new Vector2(Width, Height);
                     camera.FieldOfView = FOV;
                     camera.Position = camPos;
-                    var res = camera.Render(new List<GameObject>() { go, cub, cub1, cubi });
+                    var res = camera.Render(new List<GameObject>() { go, cub, cub1, /*cubi*/ });
                     if (res)
                     {
                         renderCalls++;
