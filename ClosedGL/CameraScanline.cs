@@ -9,7 +9,7 @@ namespace ClosedGL
     /// Class to project points from a position onto an lcd
     /// NOTE: Only works if the ViewPoint is infront of the lcd -> Transparent LCDS from the back dont work
     /// </summary>
-    public class Camera : GameObject, IRenderer
+    public class CameraScanline : GameObject, IRenderer
     {
         private static readonly Texture defaultTexture = new(1, 1)
         {
@@ -79,7 +79,7 @@ namespace ClosedGL
 
         private readonly Vector3D Normal = Vector3D.Forward;
 
-        public Camera()
+        public CameraScanline()
         {
 
         }
@@ -206,11 +206,10 @@ namespace ClosedGL
 
         public bool Render(List<GameObject> gameObjects)
         {
-            Thread.Sleep(1);
-            //if (swapChain.Count > 2)
-            //{
-            //    swapChain.TryDequeue(out _);
-            //}
+            if (swapChain.Count > 2)
+            {
+                swapChain.TryDequeue(out _);
+            }
 
             PrepareRendering(gameObjects,
                 out List<Vector3> vertices,
@@ -225,12 +224,14 @@ namespace ClosedGL
                 // Initialize depth buffer with farthest depth value
                 float farthestDepth = float.MaxValue;
                 depthBuffer = Enumerable.Repeat(farthestDepth, depthBufferRequiredLength).ToArray();
+
             }
             else
             {
                 // Clear the depth buffer at the beginning of each frame
                 float farthestDepth = float.MaxValue;
                 Array.Fill(depthBuffer, farthestDepth);
+
             }
 
             int renderedTriangles = 0;
@@ -257,7 +258,7 @@ namespace ClosedGL
 
                         // get texture for the correct gameObject
                         Texture texture = texs[currentTextureIndex];
-                        currentTriangleCounter += 3;
+                        currentTriangleCounter++;
 
                         if (currentTriangleCounter >= trianglesPerTexture[currentTextureIndex])
                         {
@@ -270,10 +271,6 @@ namespace ClosedGL
                             var p1NonNullable = (Vector2)p1;
                             var p2NonNullable = (Vector2)p2;
                             var p3NonNullable = (Vector2)p3;
-
-                            //DrawPoint(p1NonNullable, 1, stride, ptr);
-                            //DrawPoint(p2NonNullable, 1, stride, ptr);
-                            //DrawPoint(p3NonNullable, 1, stride, ptr);
 
                             var p1Distance = p1.Value.Z;
                             var p2Distance = p2.Value.Z;
@@ -293,50 +290,83 @@ namespace ClosedGL
                                 continue;
                             }
 
-                            //if (IsTriangleOutOfBounds(p1NonNullable, p2NonNullable, p3NonNullable))
-                            //{
-                            //    continue;  // Skip the entire triangle if it's out of bounds
-                            //}
+                            var uv1 = uvs[triangles[i]];
+                            var uv2 = uvs[triangles[i + 1]];
+                            var uv3 = uvs[triangles[i + 2]];
 
-                            Vector2 min = Vector2.Min(Vector2.Min(p1NonNullable, p2NonNullable), p3NonNullable);
-                            Vector2 max = Vector2.Max(Vector2.Max(p1NonNullable, p2NonNullable), p3NonNullable);
-
-                            // clamp the min and max to the render resolution
-                            min.X = Math.Max(0, Math.Min(RenderResolution.X - 1, min.X));
-                            min.Y = Math.Max(0, Math.Min(RenderResolution.Y - 1, min.Y));
-                            max.X = Math.Max(0, Math.Min(RenderResolution.X - 1, max.X));
-                            max.Y = Math.Max(0, Math.Min(RenderResolution.Y - 1, max.Y));
-
-                            for (int x = (int)min.X; x <= (int)max.X; x++)
+                            if (IsTriangleOutOfBounds(p1NonNullable, p2NonNullable, p3NonNullable))
                             {
-                                for (int y = (int)min.Y; y <= (int)max.Y; y++)
+                                continue;  // Skip the entire triangle if it's out of bounds
+                            }
+
+                            // Sort vertices based on y-coordinate
+                            if (p2NonNullable.Y < p1NonNullable.Y)
+                            {
+                                Swap(ref p1NonNullable, ref p2NonNullable);
+                                Swap(ref p1Distance, ref p2Distance);
+                                Swap(ref uv1, ref uv2);
+                            }
+                            if (p3NonNullable.Y < p1NonNullable.Y)
+                            {
+                                Swap(ref p1NonNullable, ref p3NonNullable);
+                                Swap(ref p1Distance, ref p3Distance);
+                                Swap(ref uv1, ref uv3);
+                            }
+                            if (p3NonNullable.Y < p2NonNullable.Y)
+                            {
+                                Swap(ref p2NonNullable, ref p3NonNullable);
+                                Swap(ref p2Distance, ref p3Distance);
+                                Swap(ref uv2, ref uv3);
+                            }
+
+                            // Calculate slopes of the edges
+                            float invSlope1 = (p2NonNullable.X - p1NonNullable.X) / (p2NonNullable.Y - p1NonNullable.Y);
+                            float invSlope2 = (p3NonNullable.X - p1NonNullable.X) / (p3NonNullable.Y - p1NonNullable.Y);
+
+                            // Initialize starting and ending scanlines
+                            int startY = (int)Math.Max(0, Math.Min(RenderResolution.Y - 1, p1NonNullable.Y));
+                            int endY = (int)Math.Max(0, Math.Min(RenderResolution.Y - 1, p3NonNullable.Y));
+
+                            for (int y = startY; y <= endY; y++)
+                            {
+                                // Calculate starting and ending x-coordinates for the current scanline
+                                int startX = (int)Math.Max(0, Math.Min(RenderResolution.X - 1, p1NonNullable.X + invSlope1 * (y - p1NonNullable.Y)));
+                                int endX = (int)Math.Max(0, Math.Min(RenderResolution.X - 1, p1NonNullable.X + invSlope2 * (y - p1NonNullable.Y)));
+
+                                for (int x = startX; x <= endX; x++)
                                 {
-                                    Vector2 point = new(x, y);
-                                    if (IsPointInTriangle(point, p1NonNullable, p2NonNullable, p3NonNullable)
-                                        /*&& IsPointInRenderView(point)*/)
+                                    Vector2 point = new Vector2(x, y);
+
+                                    // Check if the point is inside the triangle
+                                    if (IsPointInTriangle(point, p1NonNullable, p2NonNullable, p3NonNullable))
                                     {
+                                        // Calculate barycentric coordinates
                                         Vector3 barycentricCoords = CalculateBarycentricCoordinates(point, p1NonNullable, p2NonNullable, p3NonNullable);
-                                        Vector2 interpolatedUV = (uvs.Count > triangles[i + 2]) ? InterpolateUV(barycentricCoords, uvs[triangles[i]], uvs[triangles[i + 1]], uvs[triangles[i + 2]]) : new Vector2(0, 0);
 
                                         // Depth test
                                         float depth = barycentricCoords.X * p1Distance + barycentricCoords.Y * p2Distance + barycentricCoords.Z * p3Distance;
 
-                                        int depthIndex = x + (int)RenderResolution.X * y;
+                                        int depthIndex = x + y * (int)RenderResolution.X;
+
                                         if (depth < depthBuffer[depthIndex])
                                         {
                                             // Pixel is closer, update depth buffer and render pixel
                                             depthBuffer[depthIndex] = depth;
-                                            // sample the texture
+
+                                            // Interpolate UV coordinates
+                                            Vector2 interpolatedUV = InterpolateUV(barycentricCoords, uvs[triangles[i]], uvs[triangles[i + 1]], uvs[triangles[i + 2]]);
+
+                                            // Sample the texture
                                             int textureX = (int)(interpolatedUV.X * texture.Width);
                                             int textureY = (int)(interpolatedUV.Y * texture.Height);
 
-                                            // clamp the texture coordinates
-                                            textureX = Math.Max(0, Math.Min(texture.Width - 1, textureX));
-                                            textureY = Math.Max(0, Math.Min(texture.Height - 1, textureY));
+                                            // Clamp the texture coordinates
+                                            textureX = Math.Clamp(textureX, 0, texture.Width - 1);
+                                            textureY = Math.Clamp(textureY, 0, texture.Height - 1);
 
                                             byte[] pixel = texture.GetPixelAsBytes(textureX, textureY);
 
-                                            byte* currentLine = ptr + (y * stride);
+                                            byte* currentLine = ptr + y * stride;
 
                                             // Set the pixel color in the bitmap
                                             currentLine[x * bytesPerPixel + 0] = pixel[0];
@@ -352,9 +382,9 @@ namespace ClosedGL
 
                             // draw light purple debug lines between the points 199,67,117
 
-                            //DrawLine(p1NonNullable, p2NonNullable, /*purle BGRA*/[117, 67, 199, 255], image, stride, ptr);
-                            //DrawLine(p2NonNullable, p3NonNullable, /*purle BGRA*/[117, 67, 199, 255], image, stride, ptr);
-                            //DrawLine(p3NonNullable, p1NonNullable, /*purle BGRA*/[117, 67, 199, 255], image, stride, ptr);
+                            DrawLine(p1NonNullable, p2NonNullable, /*purle BGRA*/[117, 67, 199, 255], image, stride, ptr);
+                            DrawLine(p2NonNullable, p3NonNullable, /*purle BGRA*/[117, 67, 199, 255], image, stride, ptr);
+                            DrawLine(p3NonNullable, p1NonNullable, /*purle BGRA*/[117, 67, 199, 255], image, stride, ptr);
 
                             //// draw the square that got clamped
                             //DrawLine(min, new(min.X, max.Y), /*red BGRA*/[0, 0, 255, 255], image, stride, ptr);
@@ -371,25 +401,11 @@ namespace ClosedGL
             return true;
         }
 
-        private unsafe void DrawPoint(Vector2 p1NonNullable, float radius, int stride, byte* ptr)
+        private static void Swap<T>(ref T a, ref T b)
         {
-            int x0 = (int)p1NonNullable.X;
-            int y0 = (int)p1NonNullable.Y;
-
-            for (int x = x0 - (int)radius; x <= x0 + (int)radius; x++)
-            {
-                for (int y = y0 - (int)radius; y <= y0 + (int)radius; y++)
-                {
-                    if (x >= 0 && x < RenderResolution.X && y >= 0 && y < RenderResolution.Y)
-                    {
-                        byte* currentLine = ptr + (y * stride);
-                        currentLine[x * 4 + 0] = 255;
-                        currentLine[x * 4 + 1] = 255;
-                        currentLine[x * 4 + 2] = 255;
-                        currentLine[x * 4 + 3] = 255;
-                    }
-                }
-            }
+            T temp = a;
+            a = b;
+            b = temp;
         }
 
         private bool IsPointInRenderView(Vector2 point)
@@ -466,29 +482,61 @@ namespace ClosedGL
             uvs = new();
             texs = new();
             trianglesPerTexture = new();
-            int vertexOffset = 0;
             foreach (var gameObject in gameObjectsToRender/*.OrderByDescending(x => Vector3.Distance(Position, x.Position))*/)
             {
                 foreach (var vertex in gameObject.Mesh!.Vertices)
                 {
                     Vector3 worldVertexPosition = (vertex * gameObject.Rotation * gameObject.Scale) + gameObject.Position;
                     //var localVertexPosition = TransformToLocal(worldVertexPosition);
-                    var localVertexPositionBeta = TransformToLocal(worldVertexPosition);
+                    var localVertexPositionBeta = TransformToLocalBeta(worldVertexPosition);
                     vertices.Add(localVertexPositionBeta);
+                }
+                foreach (var triangle in gameObject.Mesh.Triangles)
+                {
+                    triangles.Add(triangle);
                 }
                 foreach (var uv in gameObject.Mesh.UVs)
                 {
                     uvs.Add(uv);
                 }
-                foreach (var triangle in gameObject.Mesh.Triangles)
-                {
-                    triangles.Add(triangle + vertexOffset);
-                }
-                vertexOffset += gameObject.Mesh.Vertices.Length;
                 texs.Add(gameObject.Texture ?? DEFAULT_TEXTURE);
                 trianglesPerTexture.Add(gameObject.Mesh.Triangles.Length);
             }
+
+            //OrderTrianglesByAverageDistance( vertices,  triangles,  uvs,  texs);
         }
+
+        private void OrderTrianglesByAverageDistance(List<Vector3> vertices, List<int> triangles, List<Vector2> uvs, List<Texture> texs)
+        {
+            // Ensure all lists have the same number of elements
+            //if (vertices.Count != triangles.Count / 3 || vertices.Count != uvs.Count || vertices.Count != texs.Count)
+            //{
+            //    // Handle mismatched input sizes (throw an exception, log an error, etc.)
+            //    throw new ArgumentException("Input lists must have the same number of elements.");
+            //}
+
+            // Calculate average distance for each triangle and store it in a dictionary
+            Dictionary<int, float> triangleDistances = new Dictionary<int, float>();
+
+            for (int i = 0; i < triangles.Count; i += 3)
+            {
+                // Calculate average distance for the current triangle
+                float averageDistance = (vertices[triangles[i]].Length() + vertices[triangles[i + 1]].Length() + vertices[triangles[i + 2]].Length()) / 3f;
+
+                // Store the average distance in the dictionary with the triangle index as the key
+                triangleDistances[i / 3] = averageDistance;
+            }
+
+            // Order triangles based on average distance in ascending order
+            List<int> orderedIndices = triangleDistances.OrderBy(pair => pair.Value).Select(pair => pair.Key * 3).ToList();
+
+            // Reorder vertices, triangles, uvs, and texs based on the calculated order
+            vertices = orderedIndices.SelectMany(index => vertices.GetRange(index, 3)).ToList();
+            triangles = orderedIndices.ToList();
+            uvs = orderedIndices.SelectMany(index => uvs.GetRange(index / 3, 3)).ToList();
+            texs = orderedIndices.Select(index => texs[index / 3]).ToList();
+        }
+
 
         public static Vector3 CalculateBarycentricCoordinates(Vector2 point, Vector2 a, Vector2 b, Vector2 c)
         {

@@ -1,4 +1,5 @@
 using ClosedGL;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Windows.Forms;
 using VRageMath;
@@ -17,32 +18,26 @@ namespace RenderTest
             // register WASD
 
             KeyDown += Form1_KeyDown;
+            KeyUp += Form1_KeyUp;
         }
 
         public float FPS { get; set; }
+        
+        // hashset for all keys that are currently pressed
+        private HashSet<Keys> keys = new HashSet<Keys>();
 
         private void Form1_KeyDown(object? sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.W)
-            {
-                camPos += Vector3.Forward * 0.1f;
-            }
-            else if (e.KeyCode == Keys.S)
-            {
-                camPos += Vector3.Backward * 0.1f;
-            }
-            else if (e.KeyCode == Keys.A)
-            {
-                camPos += Vector3.Left * 0.1f;
-            }
-            else if (e.KeyCode == Keys.D)
-            {
-                camPos += Vector3.Right * 0.1f;
-            }
+            keys.Add(e.KeyCode);
+        }
+
+        private void Form1_KeyUp(object? sender, KeyEventArgs e)
+        {
+            keys.Remove(e.KeyCode);
         }
 
         float FOV = 70f;
-        Vector3 camPos = new Vector3(0, 0, 2);
+        Vector3 camPos = new Vector3(0, 0, 50);
 
         private void Form1_MouseWheel(object? sender, MouseEventArgs e)
         {
@@ -71,7 +66,8 @@ namespace RenderTest
 
         }
 
-        Queue<int> lastFps = new Queue<int>();
+        ConcurrentQueue<int> lastFps = new ConcurrentQueue<int>();
+        ConcurrentQueue<int> lastFrametimes = new ConcurrentQueue<int>();
 
         PictureBox pb;
         bool closing = false;
@@ -81,18 +77,13 @@ namespace RenderTest
         int frameCount = 0;
         int lastFrameTimestamp = 0;
         int unrenderedFrames = 0;
-        Semaphore renderSemaphore = new Semaphore(1, 1);
-        Semaphore criticalState = new Semaphore(1, 1);
+        Semaphore renderSemaphore = new(1, 1);
+        Semaphore criticalState = new(1, 1);
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            Bitmap bitmap = new Bitmap(1, 1);
-            bitmap.SetPixel(0, 0, System.Drawing.Color.Gray);
-            var r = bitmap.LockBits(new System.Drawing.Rectangle(0, 0, 1, 1), System.Drawing.Imaging.ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-            byte[] pixel = new byte[4];
-            System.Runtime.InteropServices.Marshal.Copy(r.Scan0, pixel, 0, 4);
-            bitmap.UnlockBits(r);
-
+            GameObject house = GameObject.LoadFromObjFile("Models\\House.obj");
+            house.Position = new Vector3(0, 0, -50);
             GameObject go = new Cube();
             GameObject cub = new Cube();
             GameObject cub1 = new Cube();
@@ -107,23 +98,36 @@ namespace RenderTest
 
             List<GameObject> gameObjects = new List<GameObject>() { };
 
-            //for (int x = 0; x < 20; x++)
-            //{
-            //    for (int z = 0; z < 20; z++)
-            //    {
-            //        GameObject g = new Cube();
-            //        g.Position = new Vector3((x - 10) * 2, -15, (z - 10) * 2);
-            //        g.Scale = new Vector3(3f);
-            //        gameObjects.Add(g);
-            //    }   
-            //}
+            for (int x = 0; x < 20; x++)
+            {
+                for (int z = 0; z < 20; z++)
+                {
+                    GameObject g = new Cube();
+                    g.Position = new Vector3((x - 10) * 3, (z - 10) * 3, -15);
+                    g.Scale = new Vector3(3f);
+                    gameObjects.Add(g);
+                }
+            }
+
+            for (int x = 0; x < 20; x++)
+            {
+                for (int z = 0; z < 20; z++)
+                {
+                    GameObject g = new Cube();
+                    g.Position = new Vector3(30, (z - 10) * 3, (x - 10) * 3);
+                    g.Scale = new Vector3(3f);
+                    gameObjects.Add(g);
+                }
+            }
+
+            Vector3D cameraVelicity = Vector3.Zero;
 
             go.Scale = new Vector3(7);
-            Camera camera = new()
+            IRenderer camera = new Camera()
             {
                 FieldOfView = 70f,
                 Position = new Vector3(0, 0, 10),
-                RenderResolution = new Vector2(Width, Height),
+                RenderResolution = new Vector2I(Width, Height),
             };
 
             var t = new Thread(() =>
@@ -136,26 +140,53 @@ namespace RenderTest
                 });
 
                 Stopwatch sw = new Stopwatch();
+                Stopwatch renderStopwatch = new Stopwatch();
                 float x = 0;
                 sw.Start();
                 criticalState.WaitOne();
                 while (!closing)
                 {
+                    sw.Stop();
+                    double deltaTime = (sw.ElapsedMilliseconds == 0 ? 1 : sw.ElapsedMilliseconds);
                     sw.Restart();
-                    var deltaTime = (sw.ElapsedMilliseconds == 0 ? 1 : sw.ElapsedMilliseconds);
-                    if (sw.ElapsedMilliseconds == 0)
-                    {
-                        Thread.Sleep(1);
-                    }
-                    double fps = 1000f / deltaTime;
+                    double fps = 1000d / deltaTime;
                     FPS = (float)fps;
                     lastFps.Enqueue((int)fps);
-                    if (lastFps.Count > 20)
+                    if (lastFps.Count > lastFps.Average() * 2)
                     {
-                        lastFps.Dequeue();
+                        lastFps.TryDequeue(out _);
+                    }
+                    x += .3f * (float)Math.Max(deltaTime / 1000d, 0.01d);
+                    deltaTime /= 1000d;
+                    float speed = 2;
+                    if (keys.Contains(Keys.W))
+                    {
+                        cameraVelicity += Vector3.Forward * speed;
+                    }
+                    if (keys.Contains(Keys.S))
+                    {
+                        cameraVelicity += Vector3.Backward * speed;
+                    }
+                    if (keys.Contains(Keys.A))
+                    {
+                        cameraVelicity += Vector3.Left * speed;
+                    }
+                    if (keys.Contains(Keys.D))
+                    {
+                        cameraVelicity += Vector3.Right * speed;
+                    }
+                    if (keys.Contains(Keys.Shift))
+                    {
+                        cameraVelicity += Vector3.Up * speed;
+                    }
+                    if (keys.Contains(Keys.LControlKey))
+                    {
+                        cameraVelicity += Vector3.Down * speed;
                     }
 
-                    x += 2f * (float)deltaTime;
+                    cameraVelicity *= 0.95d;
+
+                    camPos += cameraVelicity * deltaTime;
 
                     //camera.FieldOfView = (float)Math.Sin(x) * 35 + 60;
 
@@ -177,13 +208,20 @@ namespace RenderTest
 
                     go.Rotation = Quaternion.CreateFromYawPitchRoll((float)Math.Sin(x) * 3, x, x);
 
-                    go.Scale = new Vector3(20 + 15 * (float)Math.Sin(x), 5, 5);
+                    //go.Scale = new Vector3(20 + 15 * (float)Math.Sin(x), 5, 5);
 
                     //cub.Rotation = Quaternion.CreateFromYawPitchRoll(x, x, x);
-                    camera.RenderResolution = new Vector2(Width, Height);
+                    camera.RenderResolution = new Vector2I(Width, Height);
                     camera.FieldOfView = FOV;
                     camera.Position = camPos;
-                    var res = camera.Render(new List<GameObject>() { go, cub, cub1, /*cubi*/ });
+                    renderStopwatch.Restart();
+                    var res = camera.Render([go, cub, cub1, .. gameObjects/*, cubi,..   /*house*/]);
+                    renderStopwatch.Stop();
+                    lastFrametimes.Enqueue((int)deltaTime);
+                    if (lastFrametimes.Count > 100)
+                    {
+                        lastFrametimes.TryDequeue(out _);
+                    }
                     if (res)
                     {
                         renderCalls++;
@@ -199,41 +237,58 @@ namespace RenderTest
 
             var swapper = new Thread(() =>
             {
-                int lastSwapTime = 1;
-                int frameCnt = 0;
-                Stopwatch stopwatch = new Stopwatch();
-                while (!closing)
+                try
                 {
-                    stopwatch.Restart();
-                    int unsuccessfulSwapAttempts = 0;
-                    var frame = camera.GetFrame();
-                    if (pb != null && frame != null)
+                    int lastSwapTime = 1;
+                    int frameCnt = 0;
+                    Stopwatch stopwatch = new Stopwatch();
+                    Stopwatch crauy = new Stopwatch();
+                    SetStyle(ControlStyles.DoubleBuffer | ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint, true);
+                    while (!closing)
                     {
-                        pb.Image?.Dispose();
-                        pb.Image = null;
-                        frameCnt++;
-                        Graphics g = Graphics.FromImage(frame);
+                        stopwatch.Restart();
+                        int unsuccessfulSwapAttempts = 0;
+                        crauy.Restart();
+                        int queueLength = camera.GetFrame(out Bitmap? frame);
+                        crauy.Stop();
 
-                        Metadata(g,
-                            ("Frame #", frameCnt.ToString()),
-                            ("Last swap time", lastSwapTime),
-                            ("Swaps per second", 1000 / (lastSwapTime == 0 ? 1 : lastSwapTime)),
-                            ("FieldOfView", camera.FieldOfView),
-                            ("camPos", camera.Position),
-                            ("res", camera.RenderResolution),
-                            ("FPS (instant)", FPS),
-                            ("FPS (average)", lastFps.Average()),
-                            ("res", camera.RenderResolution));
-                        g.Dispose();
-                        pb.Image = frame;
+                        if (pb != null && frame != null)
+                        {
+                            frameCnt++;
+                            Graphics g = Graphics.FromImage(frame);
+
+                            Metadata(g,
+                                ("Frame #", frameCnt.ToString()),
+                                ("Last swap time", lastSwapTime),
+                                ("Swaps per second", 1000 / (lastSwapTime == 0 ? 1 : lastSwapTime)),
+                                ("FieldOfView", camera.FieldOfView),
+                                ("camPos", camera.Position),
+                                ("res", camera.RenderResolution),
+                                ("FPS (instant)", FPS),
+                                ("FPS (average)", lastFps.Average()),
+                                ("res", camera.RenderResolution),
+                                ("getFrame", crauy.ElapsedMilliseconds),
+                                ("frameTime (average)", lastFrametimes.Average()),
+                                ("unsuccessFulSwapAttempts", unsuccessfulSwapAttempts),
+                                ("swapChainLength", queueLength));
+                            Invoke(() =>
+                            {
+                                pb.Image?.Dispose();
+                                pb.Image = frame;
+                            });
+                        }
+                        else
+                        {
+                            unsuccessfulSwapAttempts++;
+                        }
+                        stopwatch.Stop();
+                        lastSwapTime = (int)stopwatch.ElapsedMilliseconds;
+                        //Thread.Sleep(Math.Max(0, (1000 / 60) - lastSwapTime));
                     }
-                    else
-                    {
-                        unsuccessfulSwapAttempts++;
-                    }
-                    stopwatch.Stop();
-                    lastSwapTime = (int)stopwatch.ElapsedMilliseconds;
-                    Thread.Sleep(Math.Max(0, 1000 / 60 - lastSwapTime));
+                }
+                catch (Exception)
+                {
+
                 }
             });
 
@@ -359,7 +414,7 @@ namespace RenderTest
                 lastFps.Enqueue(fps);
                 if (lastFps.Count > 10)
                 {
-                    lastFps.Dequeue();
+                    lastFps.TryDequeue(out _);
                 }
                 lastFrameTimestamp = now;
 

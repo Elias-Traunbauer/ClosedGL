@@ -12,14 +12,24 @@ namespace ClosedGL
         public byte[] Data { get; set; }
         public int Width { get; set; }
         public int Height { get; set; }
+        public Texture? Mirror { get; set; } = null;
         public Texture(int width, int height)
         {
             Width = width;
             Height = height;
             Data = new byte[width * height * 4];
         }
+        public static Dictionary<string, Texture> loadedTextures = new();
         public Texture(string path) 
         {
+            if (loadedTextures.ContainsKey(path))
+            {
+                Mirror = loadedTextures[path];
+                Data = [];
+                Width = Mirror.Width;
+                Height = Mirror.Height;
+                return;
+            }
             Bitmap bitmap = new(path);
             Width = bitmap.Width;
             Height = bitmap.Height;
@@ -28,10 +38,16 @@ namespace ClosedGL
             System.Runtime.InteropServices.Marshal.Copy(lockData.Scan0, Data, 0, Width * Height * 4);
             bitmap.UnlockBits(lockData);
             bitmap.Dispose();
+            loadedTextures[path] = this;
         }
 
         public Color GetPixel(int textureX, int textureY)
         {
+            if (Mirror != null)
+            {
+                return Mirror.GetPixel(textureX, textureY);
+            }
+
             int index = (textureY * Width + textureX) * 4;
             // bitmap data is stored as BGRA
             
@@ -45,6 +61,11 @@ namespace ClosedGL
 
         public byte[] GetPixelAsBytes(int textureX, int textureY)
         {
+            if (Mirror != null)
+            {
+                return Mirror.GetPixelAsBytes(textureX, textureY);
+            }
+
             int index = (textureY * Width + textureX) * 4;
             // bitmap data is stored as BGRA
 
@@ -53,7 +74,7 @@ namespace ClosedGL
             byte r = Data[index + 2];
             byte a = Data[index + 3];
 
-            return new byte[] { r, g, b, a };
+            return [b,g,r,a];
         }
 
 

@@ -10,46 +10,54 @@ namespace ClosedGL
     {
         public override Mesh? Mesh { get; set; } = new Mesh()
         {
-            Vertices = new VRageMath.Vector3[] { 
+            Vertices = [
                 new VRageMath.Vector3(-0.5f, -0.5f, -0.5f),
+                new VRageMath.Vector3( 0.5f, -0.5f, -0.5f),
+                new VRageMath.Vector3(-0.5f, -0.5f,  0.5f),
+                new VRageMath.Vector3( 0.5f ,-0.5f,  0.5f),
+
                 new VRageMath.Vector3(-0.5f, 0.5f, -0.5f),
-                new VRageMath.Vector3(0.5f, 0.5f, -0.5f),
-                new VRageMath.Vector3(0.5f, -0.5f, -0.5f),
-                new VRageMath.Vector3(-0.5f, -0.5f, 0.5f),
-                new VRageMath.Vector3(-0.5f, 0.5f, 0.5f),
-                new VRageMath.Vector3(0.5f, 0.5f, 0.5f),
-                new VRageMath.Vector3(0.5f, -0.5f, 0.5f),
-            },
-            Triangles = new int[] {
+                new VRageMath.Vector3( 0.5f, 0.5f, -0.5f),
+                new VRageMath.Vector3(-0.5f, 0.5f,  0.5f),
+                new VRageMath.Vector3( 0.5f, 0.5f,  0.5f),
+            ],
+            Triangles = [
                 0, 1, 2,
-                0, 2, 3,
+                2, 1, 3,
+
                 4, 6, 5,
-                4, 7, 6,
-                4, 5, 1,
-                4, 1, 0,
-                3, 2, 6,
-                3, 6, 7,
-                1, 5, 6,
-                1, 6, 2,
-                4, 0, 3,
-                4, 3, 7
-            },
-            UVs = new VRageMath.Vector2[]
-            {
-                new VRageMath.Vector2(0, 0),
-                new VRageMath.Vector2(0, 1),
-                new VRageMath.Vector2(1, 1),
-                new VRageMath.Vector2(1, 0),
-                new VRageMath.Vector2(0, 0),
-                new VRageMath.Vector2(0, 1),
-                new VRageMath.Vector2(1, 1),
-                new VRageMath.Vector2(1, 0)
-            }
+                6, 7, 5,
+
+                0, 4, 1,
+                1, 4, 5,
+
+                2, 3, 6,
+                3, 7, 6,
+
+                0, 2, 4,
+                2, 6, 4,
+
+                1, 5, 3,
+                3, 5, 7,
+            ],
+            UVs =
+            [
+                new VRageMath.Vector2(0.25f, 0.33f),
+                new VRageMath.Vector2(0.5f, 0.33f),
+                new VRageMath.Vector2(0.5f, 0.66f),
+                new VRageMath.Vector2(0.25f, 0.66f),
+
+                new VRageMath.Vector2(0.25f, 0f),
+                new VRageMath.Vector2(0.5f, 0f),
+                new VRageMath.Vector2(0.5f, 1f),
+                new VRageMath.Vector2(0.25f, 1f),
+            ]
+
         };
 
         public Cube()
         {
-            Texture = new Texture("Textures\\triangle.png");
+            Texture = new Texture("Textures\\StandardCubeMap-2.jpg");
         }
     }
 }

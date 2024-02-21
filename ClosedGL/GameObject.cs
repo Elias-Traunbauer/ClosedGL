@@ -16,6 +16,16 @@ namespace ClosedGL
 
         public virtual Mesh? Mesh { get; set; }
 
+        public static GameObject CreateCube()
+        {
+            return new Cube();
+        }
+
+        public static GameObject LoadFromObjFile(string path)
+        {
+            return new ObjLoader().Load(path);
+        }
+
         public Matrix WorldMatrix
         {
             get
