@@ -1,4 +1,5 @@
 using ClosedGL;
+using ClosedGL.InputSystem;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Windows.Forms;
@@ -11,55 +12,21 @@ namespace RenderTest
         public Form1()
         {
             InitializeComponent();
-            // register mouse wheel event
+            Input.Update();
 
-            MouseWheel += Form1_MouseWheel;
+            // hide cursor
+            Cursor.Hide();
 
-            // register WASD
+            // make form fullscreen
+            FormBorderStyle = FormBorderStyle.None;
+            WindowState = FormWindowState.Maximized;
 
-            KeyDown += Form1_KeyDown;
-            KeyUp += Form1_KeyUp;
+            // set form to be double buffered
+            SetStyle(ControlStyles.DoubleBuffer | ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint, true);
         }
 
         public float FPS { get; set; }
-        
-        // hashset for all keys that are currently pressed
-        private HashSet<Keys> keys = new HashSet<Keys>();
-
-        private void Form1_KeyDown(object? sender, KeyEventArgs e)
-        {
-            keys.Add(e.KeyCode);
-        }
-
-        private void Form1_KeyUp(object? sender, KeyEventArgs e)
-        {
-            keys.Remove(e.KeyCode);
-        }
-
-        float FOV = 70f;
-        Vector3 camPos = new Vector3(0, 0, 50);
-
-        private void Form1_MouseWheel(object? sender, MouseEventArgs e)
-        {
-            if (e.Delta < 0)
-            {
-                FOV += 1;
-            }
-            else
-            {
-                FOV -= 1;
-            }
-
-            if (FOV < 1)
-            {
-                FOV = 1;
-            }
-
-            if (FOV > 179)
-            {
-                FOV = 179;
-            }
-        }
+        public Vector2 MouseDelta;
 
         protected override void OnPaint(PaintEventArgs e)
         {
@@ -72,7 +39,7 @@ namespace RenderTest
         PictureBox pb;
         bool closing = false;
 
-        Vector2 PictureScale = new Vector2(10, -10);
+        Vector2 PictureScale = new Vector2(1, -1);
 
         int frameCount = 0;
         int lastFrameTimestamp = 0;
@@ -120,13 +87,14 @@ namespace RenderTest
                 }
             }
 
-            Vector3D cameraVelicity = Vector3.Zero;
+            Vector3D cameraVelocity = Vector3.Zero;
+            Vector3 cameraRotationVelocity = Vector3.Zero;
 
             go.Scale = new Vector3(7);
             IRenderer camera = new Camera()
             {
                 FieldOfView = 70f,
-                Position = new Vector3(0, 0, 10),
+                Position = new Vector3(0, 0, 200),
                 RenderResolution = new Vector2I(Width, Height),
             };
 
@@ -139,13 +107,22 @@ namespace RenderTest
                     Controls.Add(pb);
                 });
 
-                Stopwatch sw = new Stopwatch();
-                Stopwatch renderStopwatch = new Stopwatch();
+                Stopwatch sw = new();
+                Stopwatch renderStopwatch = new();
                 float x = 0;
                 sw.Start();
                 criticalState.WaitOne();
                 while (!closing)
                 {
+                    Invoke(() =>
+                    {
+                        // set cursor position to the center of the screen only if the form is active
+                        if (Focused)
+                        {
+                            Cursor.Position = new System.Drawing.Point(Width / 2, Height / 2);
+                        }
+                    });
+
                     sw.Stop();
                     double deltaTime = (sw.ElapsedMilliseconds == 0 ? 1 : sw.ElapsedMilliseconds);
                     sw.Restart();
@@ -159,35 +136,61 @@ namespace RenderTest
                     x += .3f * (float)Math.Max(deltaTime / 1000d, 0.01d);
                     deltaTime /= 1000d;
                     float speed = 2;
-                    if (keys.Contains(Keys.W))
+                    if (Input.IsKeyDown(Keys.W))
                     {
-                        cameraVelicity += Vector3.Forward * speed;
+                        cameraVelocity += Vector3.Forward * camera.Rotation * speed;
                     }
-                    if (keys.Contains(Keys.S))
+                    if (Input.IsKeyDown(Keys.S))
                     {
-                        cameraVelicity += Vector3.Backward * speed;
+                        cameraVelocity += Vector3.Backward * camera.Rotation * speed;
                     }
-                    if (keys.Contains(Keys.A))
+                    if (Input.IsKeyDown(Keys.A))
                     {
-                        cameraVelicity += Vector3.Left * speed;
+                        cameraVelocity += Vector3.Left * camera.Rotation * speed;
                     }
-                    if (keys.Contains(Keys.D))
+                    if (Input.IsKeyDown(Keys.D))
                     {
-                        cameraVelicity += Vector3.Right * speed;
+                        cameraVelocity += Vector3.Right * camera.Rotation * speed;
                     }
-                    if (keys.Contains(Keys.Shift))
+                    if (Input.IsKeyDown(Keys.LShiftKey))
                     {
-                        cameraVelicity += Vector3.Up * speed;
+                        cameraVelocity += Vector3.Up * camera.Rotation * speed;
                     }
-                    if (keys.Contains(Keys.LControlKey))
+                    if (Input.IsKeyDown(Keys.LControlKey))
                     {
-                        cameraVelicity += Vector3.Down * speed;
+                        cameraVelocity += Vector3.Down * camera.Rotation * speed;
                     }
 
-                    cameraVelicity *= 0.95d;
+                    if (Input.IsKeyDown(Keys.Escape))
+                    {
+                        new Thread(() =>
+                        {
+                            Invoke(Close);
+                        }).Start();
+                    }
 
-                    camPos += cameraVelicity * deltaTime;
+                    MouseDelta.X = Input.GetMouseDeltaX();
+                    MouseDelta.Y = Input.GetMouseDeltaY();
 
+                    if (MouseDelta.Length() > 0)
+                    {
+
+                    }
+
+                    MouseDelta *= 0.0001f;
+
+                    cameraRotationVelocity = Vector3.Up * MouseDelta.X;
+                    cameraRotationVelocity = Vector3.Right * MouseDelta.Y;
+
+                    cameraVelocity *= 0.95d;
+
+                    camera.Position += cameraVelocity * deltaTime;
+
+                    var quaternion = Quaternion.CreateFromYawPitchRoll(cameraRotationVelocity.X, cameraRotationVelocity.Y, cameraRotationVelocity.Z);
+
+                    var camRot = camera.Rotation;
+                    camRot *= quaternion;
+                    camera.Rotation = camRot;
                     //camera.FieldOfView = (float)Math.Sin(x) * 35 + 60;
 
                     Vector3 cubPos = Vector3.Up * 30 * Quaternion.CreateFromAxisAngle(Vector3.Forward, x * 0.7f + (float)Math.Sin(x));
@@ -212,10 +215,9 @@ namespace RenderTest
 
                     //cub.Rotation = Quaternion.CreateFromYawPitchRoll(x, x, x);
                     camera.RenderResolution = new Vector2I(Width, Height);
-                    camera.FieldOfView = FOV;
-                    camera.Position = camPos;
                     renderStopwatch.Restart();
-                    var res = camera.Render([go, cub, cub1, .. gameObjects/*, cubi,..   /*house*/]);
+                    //var res = camera.Render([go, cub, cub1, .. gameObjects/*, cubi,..   /*house*/]);
+                    var res = camera.Render(new List<GameObject>() { go, cub, cub1, }.Concat(gameObjects).ToList());
                     renderStopwatch.Stop();
                     lastFrametimes.Enqueue((int)deltaTime);
                     if (lastFrametimes.Count > 100)
@@ -226,11 +228,11 @@ namespace RenderTest
                     {
                         renderCalls++;
                     }
+                    Input.Update();
                     //Render(new List<GameObject>() { go, cub, cub1, cubi }.Concat(gameObjects).ToList(), camera, ("FieldOfView", camera.FieldOfView), ("x", x), ("deltaTime", deltaTime), ("camPos", camera.Position), ("res", camera.RenderResolution));
                 }
                 criticalState.Release();
             });
-
             t.IsBackground = true;
             t.Name = "RenderThread";
             t.Start();
@@ -270,7 +272,8 @@ namespace RenderTest
                                 ("getFrame", crauy.ElapsedMilliseconds),
                                 ("frameTime (average)", lastFrametimes.Average()),
                                 ("unsuccessFulSwapAttempts", unsuccessfulSwapAttempts),
-                                ("swapChainLength", queueLength));
+                                ("swapChainLength", queueLength),
+                                ("mouseDelta", MouseDelta));
                             Invoke(() =>
                             {
                                 pb.Image?.Dispose();
@@ -290,10 +293,11 @@ namespace RenderTest
                 {
 
                 }
-            });
-
-            swapper.IsBackground = true;
-            swapper.Name = "SwapperThread";
+            })
+            {
+                IsBackground = true,
+                Name = "SwapperThread"
+            };
             swapper.Start();
         }
 

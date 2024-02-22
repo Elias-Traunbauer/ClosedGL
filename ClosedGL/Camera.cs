@@ -309,7 +309,7 @@ namespace ClosedGL
 
                             for (int x = (int)min.X; x <= (int)max.X; x++)
                             {
-                                for (int y = (int)min.Y; y <= (int)max.Y; y++)
+                                for (int y = (int)max.Y; y >= (int)min.Y; y--)
                                 {
                                     Vector2 point = new(x, y);
                                     if (IsPointInTriangle(point, p1NonNullable, p2NonNullable, p3NonNullable)

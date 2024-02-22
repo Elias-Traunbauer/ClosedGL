@@ -10,7 +10,7 @@ namespace ClosedGL
     {
         public override Mesh? Mesh { get; set; } = new Mesh()
         {
-            Vertices = [
+            Vertices = new VRageMath.Vector3[] {
                 new VRageMath.Vector3(-0.5f, -0.5f, -0.5f),
                 new VRageMath.Vector3( 0.5f, -0.5f, -0.5f),
                 new VRageMath.Vector3(-0.5f, -0.5f,  0.5f),
@@ -20,8 +20,8 @@ namespace ClosedGL
                 new VRageMath.Vector3( 0.5f, 0.5f, -0.5f),
                 new VRageMath.Vector3(-0.5f, 0.5f,  0.5f),
                 new VRageMath.Vector3( 0.5f, 0.5f,  0.5f),
-            ],
-            Triangles = [
+            },
+            Triangles = new int[] {
                 0, 1, 2,
                 2, 1, 3,
 
@@ -39,9 +39,9 @@ namespace ClosedGL
 
                 1, 5, 3,
                 3, 5, 7,
-            ],
-            UVs =
-            [
+            },
+            UVs = new VRageMath.Vector2[] {
+
                 new VRageMath.Vector2(0.25f, 0.33f),
                 new VRageMath.Vector2(0.5f, 0.33f),
                 new VRageMath.Vector2(0.5f, 0.66f),
@@ -51,7 +51,7 @@ namespace ClosedGL
                 new VRageMath.Vector2(0.5f, 0f),
                 new VRageMath.Vector2(0.5f, 1f),
                 new VRageMath.Vector2(0.25f, 1f),
-            ]
+            }
 
         };
 

@@ -25,7 +25,7 @@ namespace ClosedGL
             if (loadedTextures.ContainsKey(path))
             {
                 Mirror = loadedTextures[path];
-                Data = [];
+                Data = new byte[0];
                 Width = Mirror.Width;
                 Height = Mirror.Height;
                 return;
@@ -74,7 +74,7 @@ namespace ClosedGL
             byte r = Data[index + 2];
             byte a = Data[index + 3];
 
-            return [b,g,r,a];
+            return new byte[] { b, g, r, a };
         }
 
 
