@@ -32,10 +32,40 @@ namespace RenderTest
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            List<GameObject> floor = new List<GameObject>();
+
+            // fill floor with cubes
+            //for (int x = -100; x < 100; x += 10)
+            //{
+            //    for (int z = -100; z < 100; z += 10)
+            //    {
+            //        GameObject cube = new Cube();
+            //        cube.Position = new Vector3(x, -13, z);
+            //        cube.Scale = new Vector3(9.5f);
+            //        floor.Add(cube);
+            //    }
+            //}
+
+            // fill wall on the right side
+            for (int x = -100; x < 100; x += 10)
+            {
+                for (int z = -100; z < 100; z += 10)
+                {
+                    GameObject cube = new Cube();
+                    cube.Position = new Vector3(20, x, z);
+                    cube.Scale = new Vector3(9.5f);
+                    floor.Add(cube);
+                }
+            }
+
             GameObject go = new Cube();
             GameObject cub = new Cube();
             GameObject cub1 = new Cube();
             GameObject cubi = new Cube();
+            GameObject cub213123 = new Cube();
+            cub213123.Position = new Vector3D(20, 0, 0);
+            cub213123.Scale = new Vector3(6f);
+
             cub.Position = new Vector3(30, 19, -2);
             cub.Scale = new Vector3(5f);
 
@@ -96,7 +126,7 @@ namespace RenderTest
                     //cub.Rotation = Quaternion.CreateFromYawPitchRoll(x, x, x);
 
                     renderSemaphore.WaitOne();
-                    Render(new List<GameObject>() { go, cub, cub1, cubi }, camera, ("FieldOfView", camera.FieldOfView), ("x", x));
+                    Render(new List<GameObject>() { go, cub, cub1, cubi, cub213123 }.Concat(floor).ToList(), camera, ("FieldOfView", camera.FieldOfView), ("x", x));
 
                     sw.Restart();
 
@@ -120,7 +150,7 @@ namespace RenderTest
             int vertexOffset = 0;
 
             // go through game objects by furthest to closest
-            foreach (var gameObject in gameObjects.OrderBy(x => Vector3.Distance(x.Position, camera.Position)))
+            foreach (var gameObject in gameObjects.OrderByDescending(x => Vector3.Distance(x.Position, camera.Position)))
             {
                 if (gameObject.Mesh == null)
                 {
