@@ -9,7 +9,7 @@ namespace ClosedGL
     /// Class to project points from a position onto an lcd
     /// NOTE: Only works if the ViewPoint is infront of the lcd -> Transparent LCDS from the back dont work
     /// </summary>
-    public class Camera : GameObject, IRenderer
+    public unsafe class CameraThreaded : GameObject, IRenderer
     {
         private static readonly Texture defaultTexture = new(1, 1)
         {
@@ -78,10 +78,170 @@ namespace ClosedGL
         }
 
         private readonly Vector3D Normal = Vector3D.Forward;
+        private byte* ptr;
+        private Semaphore Semaphore = new(1, 1);
+        private Semaphore[] semaphores = new Semaphore[Environment.ProcessorCount / 2];
+        private Thread[] workerThreads = new Thread[Environment.ProcessorCount / 2];
+        private List<(Vector3 v1, Vector3 v2, Vector3 v3, Texture texture, Vector2 uv1, Vector2 uv2, Vector2 uv3, int stride, int bytesPerPixel)> renderQueue = new();
+        private bool stop = false;
 
-        public Camera()
+        public CameraThreaded()
         {
+            for (int i = 0; i < semaphores.Length; i++)
+            {
+                semaphores[i] = new Semaphore(1, 1);
+            }
+            for (int i = 0; i < workerThreads.Length; i++)
+            {
+                workerThreads[i] = new Thread(new ParameterizedThreadStart(WorkerThread));
+                workerThreads[i].Start(i);
+            }
+        }
 
+        ~CameraThreaded()
+        {
+            stop = true;
+            foreach (var thread in workerThreads)
+            {
+                thread.Join();
+            }
+        }
+
+        private unsafe void WorkerThread(object? myId)
+        {
+            int id = (int)myId!;
+
+            try
+            {
+                while (!stop)
+                {
+                    Semaphore.WaitOne();
+                    if (renderQueue.Count > 0)
+                    {
+                        semaphores[id].WaitOne();
+                        var (v1, v2, v3, texture, uv1, uv2, uv3, stride, bytesPerPixel) = renderQueue[0];
+                        renderQueue.RemoveAt(0);
+                        Semaphore.Release();
+                        RenderTriangle(v1, v2, v3, texture, uv1, uv2, uv3, ptr, stride, bytesPerPixel);
+                        semaphores[id].Release();
+                    }
+                    else
+                    {
+                        Semaphore.Release();
+                        Thread.Sleep(1);
+                    }
+                }
+            }
+            catch (Exception)
+            {
+
+            }
+        }
+
+        private unsafe void RenderTriangle(Vector3 v1, Vector3 v2, Vector3 v3, Texture texture, Vector2 uv1, Vector2 uv2, Vector2 uv3, byte* ptr, int stride, int bytesPerPixel)
+        {
+            var p1 = ProjectPointLocal(v1);
+            var p2 = ProjectPointLocal(v2);
+            var p3 = ProjectPointLocal(v3);
+
+            if (p1 != null && p2 != null && p3 != null)
+            {
+                var p1NonNullable = (Vector2)p1;
+                var p2NonNullable = (Vector2)p2;
+                var p3NonNullable = (Vector2)p3;
+
+                //DrawPoint(p1NonNullable, 1, stride, ptr);
+                //DrawPoint(p2NonNullable, 1, stride, ptr);
+                //DrawPoint(p3NonNullable, 1, stride, ptr);
+
+                var p1Distance = p1.Value.Z;
+                var p2Distance = p2.Value.Z;
+                var p3Distance = p3.Value.Z;
+
+                // check if the 2d points are clockwise
+                // if not, skip the triangle
+
+                // Only render if points are clockwise
+                var p1p2 = p2NonNullable - p1NonNullable;
+                var p1p3 = p3NonNullable - p1NonNullable;
+
+                var cross = Vector3.Cross(new Vector3(p1p2.X, p1p2.Y, 0), new Vector3(p1p3.X, p1p3.Y, 0));
+
+                if (cross.Z < 0)
+                {
+                    return;
+                }
+
+                //if (IsTriangleOutOfBounds(p1NonNullable, p2NonNullable, p3NonNullable))
+                //{
+                //    continue;  // Skip the entire triangle if it's out of bounds
+                //}
+
+                Vector2 min = Vector2.Min(Vector2.Min(p1NonNullable, p2NonNullable), p3NonNullable);
+                Vector2 max = Vector2.Max(Vector2.Max(p1NonNullable, p2NonNullable), p3NonNullable);
+
+                // clamp the min and max to the render resolution
+                min.X = Math.Max(0, Math.Min(RenderResolution.X - 1, min.X));
+                min.Y = Math.Max(0, Math.Min(RenderResolution.Y - 1, min.Y));
+                max.X = Math.Max(0, Math.Min(RenderResolution.X - 1, max.X));
+                max.Y = Math.Max(0, Math.Min(RenderResolution.Y - 1, max.Y));
+
+                for (int x = (int)min.X; x <= (int)max.X; x++)
+                {
+                    for (int y = (int)max.Y; y >= (int)min.Y; y--)
+                    {
+                        Vector2 point = new(x, y);
+                        if (IsPointInTriangle(point, p1NonNullable, p2NonNullable, p3NonNullable)
+                            /*&& IsPointInRenderView(point)*/)
+                        {
+                            Vector3 barycentricCoords = CalculateBarycentricCoordinates(point, p1NonNullable, p2NonNullable, p3NonNullable);
+                            Vector2 interpolatedUV = InterpolateUV(barycentricCoords, uv1, uv2, uv3);
+
+                            // Depth test
+                            float depth = barycentricCoords.X * p1Distance + barycentricCoords.Y * p2Distance + barycentricCoords.Z * p3Distance;
+
+                            int depthIndex = x + (int)RenderResolution.X * y;
+                            if (depth < depthBuffer[depthIndex])
+                            {
+                                // Pixel is closer, update depth buffer and render pixel
+                                depthBuffer[depthIndex] = depth;
+
+                                // sample the texture
+                                int textureX = (int)(interpolatedUV.X * texture.Width);
+                                int textureY = (int)(interpolatedUV.Y * texture.Height);
+
+                                // clamp the texture coordinates
+                                textureX = Math.Max(0, Math.Min(texture.Width - 1, textureX));
+                                textureY = Math.Max(0, Math.Min(texture.Height - 1, textureY));
+
+                                byte[] pixel = texture.GetPixelAsBytes(textureX, textureY);
+
+                                int yCoord = (int)RenderResolution.Y - y - 1;
+
+                                byte* currentLine = ptr + (yCoord * stride);
+
+                                // Set the pixel color in the bitmap
+                                currentLine[x * bytesPerPixel + 0] = pixel[0];
+                                currentLine[x * bytesPerPixel + 1] = pixel[1];
+                                currentLine[x * bytesPerPixel + 2] = pixel[2];
+                                currentLine[x * bytesPerPixel + 3] = pixel[3];
+                            }
+                        }
+                    }
+                }
+
+                // draw light purple debug lines between the points 199,67,117
+
+                //DrawLine(p1NonNullable, p2NonNullable, /*purle BGRA*/[117, 67, 199, 255], image, stride, ptr);
+                //DrawLine(p2NonNullable, p3NonNullable, /*purle BGRA*/[117, 67, 199, 255], image, stride, ptr);
+                //DrawLine(p3NonNullable, p1NonNullable, /*purle BGRA*/[117, 67, 199, 255], image, stride, ptr);
+
+                //// draw the square that got clamped
+                //DrawLine(min, new(min.X, max.Y), /*red BGRA*/[0, 0, 255, 255], image, stride, ptr);
+                //DrawLine(new(min.X, max.Y), max, /*red BGRA*/[0, 0, 255, 255], image, stride, ptr);
+                //DrawLine(max, new(max.X, min.Y), /*red BGRA*/[0, 0, 255, 255], image, stride, ptr);
+                //DrawLine(new(max.X, min.Y), min, /*red BGRA*/[0, 0, 255, 255], image, stride, ptr);
+            }
         }
 
         public Vector2? ProjectPoint(Vector3D worldPoint)
@@ -233,14 +393,13 @@ namespace ClosedGL
                 Array.Fill(depthBuffer, farthestDepth);
             }
 
-            int renderedTriangles = 0;
-
             unsafe
             {
                 int bytesPerPixel = 4;
                 byte[] image = new byte[(int)RenderResolution.X * (int)RenderResolution.Y * bytesPerPixel];
                 fixed (byte* ptr = &image[0])
                 {
+                    this.ptr = ptr;
                     int stride = (int)RenderResolution.X * bytesPerPixel;
 
                     int currentTextureIndex = 0;
@@ -251,9 +410,9 @@ namespace ClosedGL
                         var v2 = vertices[triangles[i + 1]];
                         var v3 = vertices[triangles[i + 2]];
 
-                        var p1 = ProjectPointLocal(v1);
-                        var p2 = ProjectPointLocal(v2);
-                        var p3 = ProjectPointLocal(v3);
+                        var uv1 = uvs.Count > triangles[i] ? uvs[triangles[i]] : new Vector2(0, 0);
+                        var uv2 = uvs.Count > triangles[i + 1] ? uvs[triangles[i + 1]] : new Vector2(1, 0);
+                        var uv3 = uvs.Count > triangles[i + 2] ? uvs[triangles[i + 2]] : new Vector2(0, 1);
 
                         // get texture for the correct gameObject
                         Texture texture = texs[currentTextureIndex];
@@ -265,106 +424,20 @@ namespace ClosedGL
                             currentTriangleCounter = 0;
                         }
 
-                        if (p1 != null && p2 != null && p3 != null)
-                        {
-                            var p1NonNullable = (Vector2)p1;
-                            var p2NonNullable = (Vector2)p2;
-                            var p3NonNullable = (Vector2)p3;
+                        // render the triangle
+                        renderQueue.Add((v1, v2, v3, texture, uv1, uv2, uv3, stride, bytesPerPixel));
+                    }
 
-                            //DrawPoint(p1NonNullable, 1, stride, ptr);
-                            //DrawPoint(p2NonNullable, 1, stride, ptr);
-                            //DrawPoint(p3NonNullable, 1, stride, ptr);
+                    // wait for all threads to finish
+                    while (renderQueue.Count > 0)
+                    {
+                        Thread.Sleep(1);
+                    }
 
-                            var p1Distance = p1.Value.Z;
-                            var p2Distance = p2.Value.Z;
-                            var p3Distance = p3.Value.Z;
-
-                            // check if the 2d points are clockwise
-                            // if not, skip the triangle
-
-                            // Only render if points are clockwise
-                            var p1p2 = p2NonNullable - p1NonNullable;
-                            var p1p3 = p3NonNullable - p1NonNullable;
-
-                            var cross = Vector3.Cross(new Vector3(p1p2.X, p1p2.Y, 0), new Vector3(p1p3.X, p1p3.Y, 0));
-
-                            if (cross.Z < 0)
-                            {
-                                continue;
-                            }
-
-                            //if (IsTriangleOutOfBounds(p1NonNullable, p2NonNullable, p3NonNullable))
-                            //{
-                            //    continue;  // Skip the entire triangle if it's out of bounds
-                            //}
-
-                            Vector2 min = Vector2.Min(Vector2.Min(p1NonNullable, p2NonNullable), p3NonNullable);
-                            Vector2 max = Vector2.Max(Vector2.Max(p1NonNullable, p2NonNullable), p3NonNullable);
-
-                            // clamp the min and max to the render resolution
-                            min.X = Math.Max(0, Math.Min(RenderResolution.X - 1, min.X));
-                            min.Y = Math.Max(0, Math.Min(RenderResolution.Y - 1, min.Y));
-                            max.X = Math.Max(0, Math.Min(RenderResolution.X - 1, max.X));
-                            max.Y = Math.Max(0, Math.Min(RenderResolution.Y - 1, max.Y));
-
-                            for (int x = (int)min.X; x <= (int)max.X; x++)
-                            {
-                                for (int y = (int)max.Y; y >= (int)min.Y; y--)
-                                {
-                                    Vector2 point = new(x, y);
-                                    if (IsPointInTriangle(point, p1NonNullable, p2NonNullable, p3NonNullable)
-                                        /*&& IsPointInRenderView(point)*/)
-                                    {
-                                        Vector3 barycentricCoords = CalculateBarycentricCoordinates(point, p1NonNullable, p2NonNullable, p3NonNullable);
-                                        Vector2 interpolatedUV = (uvs.Count > triangles[i + 2]) ? InterpolateUV(barycentricCoords, uvs[triangles[i]], uvs[triangles[i + 1]], uvs[triangles[i + 2]]) : new Vector2(0, 0);
-
-                                        // Depth test
-                                        float depth = barycentricCoords.X * p1Distance + barycentricCoords.Y * p2Distance + barycentricCoords.Z * p3Distance;
-
-                                        int depthIndex = x + (int)RenderResolution.X * y;
-                                        if (depth < depthBuffer[depthIndex])
-                                        {
-                                            // Pixel is closer, update depth buffer and render pixel
-                                            depthBuffer[depthIndex] = depth;
-
-                                            // sample the texture
-                                            int textureX = (int)(interpolatedUV.X * texture.Width);
-                                            int textureY = (int)(interpolatedUV.Y * texture.Height);
-
-                                            // clamp the texture coordinates
-                                            textureX = Math.Max(0, Math.Min(texture.Width - 1, textureX));
-                                            textureY = Math.Max(0, Math.Min(texture.Height - 1, textureY));
-
-                                            byte[] pixel = texture.GetPixelAsBytes(textureX, textureY);
-
-                                            int yCoord = (int)RenderResolution.Y - y - 1;
-
-                                            byte* currentLine = ptr + (yCoord * stride);
-
-                                            // Set the pixel color in the bitmap
-                                            currentLine[x * bytesPerPixel + 0] = pixel[0];
-                                            currentLine[x * bytesPerPixel + 1] = pixel[1];
-                                            currentLine[x * bytesPerPixel + 2] = pixel[2];
-                                            currentLine[x * bytesPerPixel + 3] = pixel[3];
-
-                                            renderedTriangles++;
-                                        }
-                                    }
-                                }
-                            }
-
-                            // draw light purple debug lines between the points 199,67,117
-
-                            //DrawLine(p1NonNullable, p2NonNullable, /*purle BGRA*/[117, 67, 199, 255], image, stride, ptr);
-                            //DrawLine(p2NonNullable, p3NonNullable, /*purle BGRA*/[117, 67, 199, 255], image, stride, ptr);
-                            //DrawLine(p3NonNullable, p1NonNullable, /*purle BGRA*/[117, 67, 199, 255], image, stride, ptr);
-
-                            //// draw the square that got clamped
-                            //DrawLine(min, new(min.X, max.Y), /*red BGRA*/[0, 0, 255, 255], image, stride, ptr);
-                            //DrawLine(new(min.X, max.Y), max, /*red BGRA*/[0, 0, 255, 255], image, stride, ptr);
-                            //DrawLine(max, new(max.X, min.Y), /*red BGRA*/[0, 0, 255, 255], image, stride, ptr);
-                            //DrawLine(new(max.X, min.Y), min, /*red BGRA*/[0, 0, 255, 255], image, stride, ptr);
-                        }
+                    foreach (var item in semaphores)
+                    {
+                        item.WaitOne();
+                        item.Release();
                     }
                 }
 

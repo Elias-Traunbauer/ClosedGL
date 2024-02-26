@@ -9,7 +9,7 @@ namespace ClosedGL
     /// Class to project points from a position onto an lcd
     /// NOTE: Only works if the ViewPoint is infront of the lcd -> Transparent LCDS from the back dont work
     /// </summary>
-    public class Camera : GameObject, IRenderer
+    public class CameraScanlineBeta : GameObject, IRenderer
     {
         private static readonly Texture defaultTexture = new(1, 1)
         {
@@ -79,7 +79,7 @@ namespace ClosedGL
 
         private readonly Vector3D Normal = Vector3D.Forward;
 
-        public Camera()
+        public CameraScanlineBeta()
         {
 
         }
@@ -298,6 +298,25 @@ namespace ClosedGL
                             //    continue;  // Skip the entire triangle if it's out of bounds
                             //}
 
+                            // sort vertices by y
+                            if (p1NonNullable.Y > p2NonNullable.Y)
+                            {
+                                (p2NonNullable, p1NonNullable) = (p1NonNullable, p2NonNullable);
+                            }
+                            if (p1NonNullable.Y > p3NonNullable.Y)
+                            {
+                                (p3NonNullable, p1NonNullable) = (p1NonNullable, p3NonNullable);
+                            }
+                            if (p2NonNullable.Y > p3NonNullable.Y)
+                            {
+                                (p3NonNullable, p2NonNullable) = (p2NonNullable, p3NonNullable);
+                            }
+
+                            // calculate equations for the edges
+                            float invSlope1 = (p2NonNullable.X - p1NonNullable.X) / (p2NonNullable.Y - p1NonNullable.Y);
+                            float invSlope2 = (p3NonNullable.X - p1NonNullable.X) / (p3NonNullable.Y - p1NonNullable.Y);
+                            float invSlope3 = (p3NonNullable.X - p2NonNullable.X) / (p3NonNullable.Y - p2NonNullable.Y);
+
                             Vector2 min = Vector2.Min(Vector2.Min(p1NonNullable, p2NonNullable), p3NonNullable);
                             Vector2 max = Vector2.Max(Vector2.Max(p1NonNullable, p2NonNullable), p3NonNullable);
 
@@ -307,51 +326,109 @@ namespace ClosedGL
                             max.X = Math.Max(0, Math.Min(RenderResolution.X - 1, max.X));
                             max.Y = Math.Max(0, Math.Min(RenderResolution.Y - 1, max.Y));
 
-                            for (int x = (int)min.X; x <= (int)max.X; x++)
+                            // Inside your main rendering function
+                            for (int scanlineY = (int)min.Y; scanlineY <= (int)max.Y; scanlineY++)
                             {
-                                for (int y = (int)max.Y; y >= (int)min.Y; y--)
+                                // Calculate intersections with the edges for the current scanline
+                                float x1 = IntersectX(scanlineY, invSlope1, p1NonNullable, p2NonNullable);
+                                float x2 = IntersectX(scanlineY, invSlope2, p1NonNullable, p3NonNullable);
+                                float x3 = IntersectX(scanlineY, invSlope3, p2NonNullable, p3NonNullable);
+
+                                // Find the leftmost and rightmost intersection points
+                                float minX = Math.Min(x1, Math.Min(x2, x3));
+                                float maxX = Math.Max(x1, Math.Max(x2, x3));
+
+                                // Your depth test, pixel filling, and attribute interpolation logic goes here
+
+                                for (int currentX = (int)minX; currentX <= (int)maxX; currentX++)
                                 {
-                                    Vector2 point = new(x, y);
-                                    if (IsPointInTriangle(point, p1NonNullable, p2NonNullable, p3NonNullable)
-                                        /*&& IsPointInRenderView(point)*/)
+                                    // Depth test
+                                    float depth = 0; // Calculate depth for the current pixel
+                                    int depthIndex = currentX + (int)RenderResolution.X * scanlineY;
+                                    if (depth < depthBuffer[depthIndex])
                                     {
-                                        Vector3 barycentricCoords = CalculateBarycentricCoordinates(point, p1NonNullable, p2NonNullable, p3NonNullable);
-                                        Vector2 interpolatedUV = (uvs.Count > triangles[i + 2]) ? InterpolateUV(barycentricCoords, uvs[triangles[i]], uvs[triangles[i + 1]], uvs[triangles[i + 2]]) : new Vector2(0, 0);
+                                        // Pixel is closer, update depth buffer and render pixel
+                                        depthBuffer[depthIndex] = depth;
 
-                                        // Depth test
-                                        float depth = barycentricCoords.X * p1Distance + barycentricCoords.Y * p2Distance + barycentricCoords.Z * p3Distance;
+                                        // Sample the texture
+                                        int textureX = (int)(currentX / (maxX - minX) * texture.Width);
+                                        int textureY = (int)(scanlineY / (max.Y - min.Y) * texture.Height);
 
-                                        int depthIndex = x + (int)RenderResolution.X * y;
-                                        if (depth < depthBuffer[depthIndex])
-                                        {
-                                            // Pixel is closer, update depth buffer and render pixel
-                                            depthBuffer[depthIndex] = depth;
+                                        // Clamp the texture coordinates
+                                        textureX = Math.Max(0, Math.Min(texture.Width - 1, textureX));
+                                        textureY = Math.Max(0, Math.Min(texture.Height - 1, textureY));
 
-                                            // sample the texture
-                                            int textureX = (int)(interpolatedUV.X * texture.Width);
-                                            int textureY = (int)(interpolatedUV.Y * texture.Height);
+                                        byte[] pixel = texture.GetPixelAsBytes(textureX, textureY);
 
-                                            // clamp the texture coordinates
-                                            textureX = Math.Max(0, Math.Min(texture.Width - 1, textureX));
-                                            textureY = Math.Max(0, Math.Min(texture.Height - 1, textureY));
+                                        int yCoord = (int)RenderResolution.Y - scanlineY - 1;
 
-                                            byte[] pixel = texture.GetPixelAsBytes(textureX, textureY);
+                                        byte* currentLine = ptr + (yCoord * stride);
 
-                                            int yCoord = (int)RenderResolution.Y - y - 1;
+                                        // Set the pixel color in the bitmap
+                                        currentLine[currentX * bytesPerPixel + 0] = pixel[0];
+                                        currentLine[currentX * bytesPerPixel + 1] = pixel[1];
+                                        currentLine[currentX * bytesPerPixel + 2] = pixel[2];
+                                        currentLine[currentX * bytesPerPixel + 3] = pixel[3];
 
-                                            byte* currentLine = ptr + (yCoord * stride);
-
-                                            // Set the pixel color in the bitmap
-                                            currentLine[x * bytesPerPixel + 0] = pixel[0];
-                                            currentLine[x * bytesPerPixel + 1] = pixel[1];
-                                            currentLine[x * bytesPerPixel + 2] = pixel[2];
-                                            currentLine[x * bytesPerPixel + 3] = pixel[3];
-
-                                            renderedTriangles++;
-                                        }
+                                        renderedTriangles++;
                                     }
                                 }
                             }
+
+                            //Vector2 min = Vector2.Min(Vector2.Min(p1NonNullable, p2NonNullable), p3NonNullable);
+                            //Vector2 max = Vector2.Max(Vector2.Max(p1NonNullable, p2NonNullable), p3NonNullable);
+
+                            //// clamp the min and max to the render resolution
+                            //min.X = Math.Max(0, Math.Min(RenderResolution.X - 1, min.X));
+                            //min.Y = Math.Max(0, Math.Min(RenderResolution.Y - 1, min.Y));
+                            //max.X = Math.Max(0, Math.Min(RenderResolution.X - 1, max.X));
+                            //max.Y = Math.Max(0, Math.Min(RenderResolution.Y - 1, max.Y));
+
+                            //for (int x = (int)min.X; x <= (int)max.X; x++)
+                            //{
+                            //    for (int y = (int)max.Y; y >= (int)min.Y; y--)
+                            //    {
+                            //        Vector2 point = new(x, y);
+                            //        if (IsPointInTriangle(point, p1NonNullable, p2NonNullable, p3NonNullable)
+                            //            /*&& IsPointInRenderView(point)*/)
+                            //        {
+                            //            Vector3 barycentricCoords = CalculateBarycentricCoordinates(point, p1NonNullable, p2NonNullable, p3NonNullable);
+                            //            Vector2 interpolatedUV = (uvs.Count > triangles[i + 2]) ? InterpolateUV(barycentricCoords, uvs[triangles[i]], uvs[triangles[i + 1]], uvs[triangles[i + 2]]) : new Vector2(0, 0);
+
+                            //            // Depth test
+                            //            float depth = barycentricCoords.X * p1Distance + barycentricCoords.Y * p2Distance + barycentricCoords.Z * p3Distance;
+
+                            //            int depthIndex = x + (int)RenderResolution.X * y;
+                            //            if (depth < depthBuffer[depthIndex])
+                            //            {
+                            //                // Pixel is closer, update depth buffer and render pixel
+                            //                depthBuffer[depthIndex] = depth;
+
+                            //                // sample the texture
+                            //                int textureX = (int)(interpolatedUV.X * texture.Width);
+                            //                int textureY = (int)(interpolatedUV.Y * texture.Height);
+
+                            //                // clamp the texture coordinates
+                            //                textureX = Math.Max(0, Math.Min(texture.Width - 1, textureX));
+                            //                textureY = Math.Max(0, Math.Min(texture.Height - 1, textureY));
+
+                            //                byte[] pixel = texture.GetPixelAsBytes(textureX, textureY);
+
+                            //                int yCoord = (int)RenderResolution.Y - y - 1;
+
+                            //                byte* currentLine = ptr + (yCoord * stride);
+
+                            //                // Set the pixel color in the bitmap
+                            //                currentLine[x * bytesPerPixel + 0] = pixel[0];
+                            //                currentLine[x * bytesPerPixel + 1] = pixel[1];
+                            //                currentLine[x * bytesPerPixel + 2] = pixel[2];
+                            //                currentLine[x * bytesPerPixel + 3] = pixel[3];
+
+                            //                renderedTriangles++;
+                            //            }
+                            //        }
+                            //    }
+                            //}
 
                             // draw light purple debug lines between the points 199,67,117
 
@@ -372,6 +449,12 @@ namespace ClosedGL
                 swapChain.Enqueue(image);
             }
             return true;
+        }
+
+        private float IntersectX(int scanlineY, float invSlope, Vector2 vertex1, Vector2 vertex2)
+        {
+            // Calculate x-coordinate of intersection using the equation: x = (y - b) / m
+            return (scanlineY - vertex1.Y) / invSlope + vertex1.X;
         }
 
         private unsafe void DrawPoint(Vector2 p1NonNullable, float radius, int stride, byte* ptr)

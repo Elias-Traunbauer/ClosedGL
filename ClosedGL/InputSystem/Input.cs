@@ -27,6 +27,8 @@ namespace ClosedGL.InputSystem
         float mouseY = 0;
         float deltaX = 0;
         float deltaY = 0;
+        private int centerX;
+        private int centerY;
 
         private IKeyboardMouseEvents m_GlobalHook;
 
@@ -44,6 +46,11 @@ namespace ClosedGL.InputSystem
             m_GlobalHook.MouseWheel += MouseWheel;
             m_GlobalHook.MouseMove += MouseMove;
 
+            // Set the cursor position to the center of the screen
+            Cursor.Position = new System.Drawing.Point(Screen.PrimaryScreen.Bounds.Width / 2, Screen.PrimaryScreen.Bounds.Height / 2);
+
+            centerX = Screen.PrimaryScreen.Bounds.Width / 2;
+            centerY = Screen.PrimaryScreen.Bounds.Height / 2;
             //keyboardHook.Install();
             //mouseHook.Install();
         }
@@ -70,11 +77,14 @@ namespace ClosedGL.InputSystem
 
         private void MouseMove(object? sender, MouseEventArgs e)
         {
-            deltaX += (mouseX - e.X) * 2;
-            deltaY += (mouseY - e.Y) * 2;
+            //var centerMousePosX = Screen.PrimaryScreen.Bounds.Width / 2;
+            //var centerMousePosY = Screen.PrimaryScreen.Bounds.Height / 2;
 
-            mouseX = e.X;
-            mouseY = e.Y;
+            //deltaX = centerMousePosX - e.X;
+            //deltaY = centerMousePosY - e.Y;
+
+            //// Adjust the cursor position using delta values
+            //Cursor.Position = new System.Drawing.Point((int)(centerX + deltaX), (int)(centerY + deltaY));
         }
 
         private void MouseWheel(object? sender, MouseEventArgs e)
@@ -135,10 +145,24 @@ namespace ClosedGL.InputSystem
 
         public static void Update()
         {
-            Instance.mouseWheel = 0;
-            //Instance.mouseWheel = 0;
-            //Instance.mouseX = 0;
-            //Instance.mouseY = 0;
+            // get current mouse position
+            var mousePos = Cursor.Position;
+
+            // calculate the delta from the center of the screen
+            var deltaX = mousePos.X - Instance.centerX;
+            var deltaY = mousePos.Y - Instance.centerY;
+
+            // set the cursor position to the center of the screen
+            Cursor.Position = new System.Drawing.Point(Instance.centerX, Instance.centerY);
+
+            // set the delta values
+            Instance.deltaX = deltaX;
+            Instance.deltaY = deltaY;
+        }
+
+        public static void Initialize()
+        {
+            _ = Instance;
         }
 
         public static float GetMouseWheel()
