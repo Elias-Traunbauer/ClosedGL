@@ -15,10 +15,10 @@ namespace RenderTest
 
         protected override void OnPaint(System.Windows.Forms.PaintEventArgs e)
         {
-            lock (this)
-            {
+            //lock (this)
+            //{
                 base.OnPaint(e);
-            }
+            //}
         }
     }
 }

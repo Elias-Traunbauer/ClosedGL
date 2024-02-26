@@ -1,4 +1,6 @@
 using ClosedGL;
+using ClosedGL.InputSystem;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Windows.Forms;
 using VRageMath;
@@ -10,54 +12,45 @@ namespace RenderTest
         public Form1()
         {
             InitializeComponent();
+            Input.Update();
+
+            // hide cursor
+            Cursor.Hide();
+
+            // make form fullscreen
+            FormBorderStyle = FormBorderStyle.None;
+            WindowState = FormWindowState.Maximized;
+
+            // set form to be double buffered
+            SetStyle(ControlStyles.DoubleBuffer | ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint, true);
         }
+
+        public float FPS { get; set; }
+        public Vector2 MouseDelta;
 
         protected override void OnPaint(PaintEventArgs e)
         {
 
         }
 
-        Queue<int> lastFps = new Queue<int>();
+        ConcurrentQueue<int> lastFps = new ConcurrentQueue<int>();
+        ConcurrentQueue<int> lastFrametimes = new ConcurrentQueue<int>();
 
         PictureBox pb;
         bool closing = false;
 
-        Vector2 PictureScale = new Vector2(10, -10);
+        Vector2 PictureScale = new Vector2(1, -1);
 
         int frameCount = 0;
         int lastFrameTimestamp = 0;
         int unrenderedFrames = 0;
-        Semaphore renderSemaphore = new Semaphore(1, 1);
-        Semaphore criticalState = new Semaphore(1, 1);
+        Semaphore renderSemaphore = new(1, 1);
+        Semaphore criticalState = new(1, 1);
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            List<GameObject> floor = new List<GameObject>();
-
-            // fill floor with cubes
-            //for (int x = -100; x < 100; x += 10)
-            //{
-            //    for (int z = -100; z < 100; z += 10)
-            //    {
-            //        GameObject cube = new Cube();
-            //        cube.Position = new Vector3(x, -13, z);
-            //        cube.Scale = new Vector3(9.5f);
-            //        floor.Add(cube);
-            //    }
-            //}
-
-            // fill wall on the right side
-            for (int x = -100; x < 100; x += 10)
-            {
-                for (int z = -100; z < 100; z += 10)
-                {
-                    GameObject cube = new Cube();
-                    cube.Position = new Vector3(20, x, z);
-                    cube.Scale = new Vector3(9.5f);
-                    floor.Add(cube);
-                }
-            }
-
+            GameObject house = GameObject.LoadFromObjFile("Models\\House.obj");
+            house.Position = new Vector3(0, 0, -50);
             GameObject go = new Cube();
             GameObject cub = new Cube();
             GameObject cub1 = new Cube();
@@ -74,33 +67,134 @@ namespace RenderTest
 
             cub1.Position = new Vector3(30, 0, 0);
 
+            List<GameObject> gameObjects = new List<GameObject>() { };
+
+            for (int x = 0; x < 20; x++)
+            {
+                for (int z = 0; z < 20; z++)
+                {
+                    GameObject g = new Cube();
+                    g.Position = new Vector3((x - 10) * 3, (z - 10) * 3, -15);
+                    g.Scale = new Vector3(3f);
+                    gameObjects.Add(g);
+                }
+            }
+
+            for (int x = 0; x < 20; x++)
+            {
+                for (int z = 0; z < 20; z++)
+                {
+                    GameObject g = new Cube();
+                    g.Position = new Vector3(30, (z - 10) * 3, (x - 10) * 3);
+                    g.Scale = new Vector3(3f);
+                    gameObjects.Add(g);
+                }
+            }
+
+            Vector3D cameraVelocity = Vector3.Zero;
+            Vector3 cameraRotationVelocity = Vector3.Zero;
+
             go.Scale = new Vector3(7);
-            Camera camera = new()
+            IRenderer camera = new Camera()
             {
                 FieldOfView = 70f,
-                Position = new Vector3(0, 0, 2)
+                Position = new Vector3(0, 0, 200),
+                RenderResolution = new Vector2I(Width, Height),
             };
 
             var t = new Thread(() =>
             {
                 pb = new MyPb();
-                
+
                 Invoke(() =>
                 {
                     Controls.Add(pb);
                 });
 
-                Stopwatch sw = new Stopwatch();
+                Stopwatch sw = new();
+                Stopwatch renderStopwatch = new();
                 float x = 0;
                 sw.Start();
                 criticalState.WaitOne();
                 while (!closing)
                 {
+                    Invoke(() =>
+                    {
+                        // set cursor position to the center of the screen only if the form is active
+                        if (Focused)
+                        {
+                            Cursor.Position = new System.Drawing.Point(Width / 2, Height / 2);
+                        }
+                    });
+
                     sw.Stop();
-                    var deltaTime = (sw.ElapsedTicks / 10000d) / 1000d;
+                    double deltaTime = (sw.ElapsedMilliseconds == 0 ? 1 : sw.ElapsedMilliseconds);
+                    sw.Restart();
+                    double fps = 1000d / deltaTime;
+                    FPS = (float)fps;
+                    lastFps.Enqueue((int)fps);
+                    if (lastFps.Count > lastFps.Average() * 2)
+                    {
+                        lastFps.TryDequeue(out _);
+                    }
+                    x += .3f * (float)Math.Max(deltaTime / 1000d, 0.01d);
+                    deltaTime /= 1000d;
+                    float speed = 2;
+                    if (Input.IsKeyDown(Keys.W))
+                    {
+                        cameraVelocity += Vector3.Forward * camera.Rotation * speed;
+                    }
+                    if (Input.IsKeyDown(Keys.S))
+                    {
+                        cameraVelocity += Vector3.Backward * camera.Rotation * speed;
+                    }
+                    if (Input.IsKeyDown(Keys.A))
+                    {
+                        cameraVelocity += Vector3.Left * camera.Rotation * speed;
+                    }
+                    if (Input.IsKeyDown(Keys.D))
+                    {
+                        cameraVelocity += Vector3.Right * camera.Rotation * speed;
+                    }
+                    if (Input.IsKeyDown(Keys.LShiftKey))
+                    {
+                        cameraVelocity += Vector3.Up * camera.Rotation * speed;
+                    }
+                    if (Input.IsKeyDown(Keys.LControlKey))
+                    {
+                        cameraVelocity += Vector3.Down * camera.Rotation * speed;
+                    }
 
-                    x += 2f * (float)deltaTime;
+                    if (Input.IsKeyDown(Keys.Escape))
+                    {
+                        new Thread(() =>
+                        {
+                            Invoke(Close);
+                        }).Start();
+                    }
 
+                    MouseDelta.X = Input.GetMouseDeltaX();
+                    MouseDelta.Y = Input.GetMouseDeltaY();
+
+                    if (MouseDelta.Length() > 0)
+                    {
+
+                    }
+
+                    MouseDelta *= 0.0001f;
+
+                    cameraRotationVelocity = Vector3.Up * MouseDelta.X;
+                    cameraRotationVelocity = Vector3.Right * MouseDelta.Y;
+
+                    cameraVelocity *= 0.95d;
+
+                    camera.Position += cameraVelocity * deltaTime;
+
+                    var quaternion = Quaternion.CreateFromYawPitchRoll(cameraRotationVelocity.X, cameraRotationVelocity.Y, cameraRotationVelocity.Z);
+
+                    var camRot = camera.Rotation;
+                    camRot *= quaternion;
+                    camera.Rotation = camRot;
                     //camera.FieldOfView = (float)Math.Sin(x) * 35 + 60;
 
                     Vector3 cubPos = Vector3.Up * 30 * Quaternion.CreateFromAxisAngle(Vector3.Forward, x * 0.7f + (float)Math.Sin(x));
@@ -121,36 +215,125 @@ namespace RenderTest
 
                     go.Rotation = Quaternion.CreateFromYawPitchRoll((float)Math.Sin(x) * 3, x, x);
 
-                    go.Scale = new Vector3(20 + 15 * (float)Math.Sin(x), 5, 5);
+                    //go.Scale = new Vector3(20 + 15 * (float)Math.Sin(x), 5, 5);
 
                     //cub.Rotation = Quaternion.CreateFromYawPitchRoll(x, x, x);
-
-                    renderSemaphore.WaitOne();
-                    Render(new List<GameObject>() { go, cub, cub1, cubi, cub213123 }.Concat(floor).ToList(), camera, ("FieldOfView", camera.FieldOfView), ("x", x));
-
-                    sw.Restart();
-
-                    Thread.Sleep(TimeSpan.FromTicks(10000));
+                    camera.RenderResolution = new Vector2I(Width, Height);
+                    renderStopwatch.Restart();
+                    //var res = camera.Render([go, cub, cub1, .. gameObjects/*, cubi,..   /*house*/]);
+                    var res = camera.Render(new List<GameObject>() { go, cub, cub1, }.Concat(gameObjects).ToList());
+                    renderStopwatch.Stop();
+                    lastFrametimes.Enqueue((int)deltaTime);
+                    if (lastFrametimes.Count > 100)
+                    {
+                        lastFrametimes.TryDequeue(out _);
+                    }
+                    if (res)
+                    {
+                        renderCalls++;
+                    }
+                    Input.Update();
+                    //Render(new List<GameObject>() { go, cub, cub1, cubi }.Concat(gameObjects).ToList(), camera, ("FieldOfView", camera.FieldOfView), ("x", x), ("deltaTime", deltaTime), ("camPos", camera.Position), ("res", camera.RenderResolution));
                 }
                 criticalState.Release();
             });
-
             t.IsBackground = true;
             t.Name = "RenderThread";
             t.Start();
+
+            var swapper = new Thread(() =>
+            {
+                try
+                {
+                    int lastSwapTime = 1;
+                    int frameCnt = 0;
+                    Stopwatch stopwatch = new Stopwatch();
+                    Stopwatch crauy = new Stopwatch();
+                    SetStyle(ControlStyles.DoubleBuffer | ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint, true);
+                    while (!closing)
+                    {
+                        stopwatch.Restart();
+                        int unsuccessfulSwapAttempts = 0;
+                        crauy.Restart();
+                        int queueLength = camera.GetFrame(out Bitmap? frame);
+                        crauy.Stop();
+
+                        if (pb != null && frame != null)
+                        {
+                            frameCnt++;
+                            Graphics g = Graphics.FromImage(frame);
+
+                            Metadata(g,
+                                ("Frame #", frameCnt.ToString()),
+                                ("Last swap time", lastSwapTime),
+                                ("Swaps per second", 1000 / (lastSwapTime == 0 ? 1 : lastSwapTime)),
+                                ("FieldOfView", camera.FieldOfView),
+                                ("camPos", camera.Position),
+                                ("res", camera.RenderResolution),
+                                ("FPS (instant)", FPS),
+                                ("FPS (average)", lastFps.Average()),
+                                ("res", camera.RenderResolution),
+                                ("getFrame", crauy.ElapsedMilliseconds),
+                                ("frameTime (average)", lastFrametimes.Average()),
+                                ("unsuccessFulSwapAttempts", unsuccessfulSwapAttempts),
+                                ("swapChainLength", queueLength),
+                                ("mouseDelta", MouseDelta));
+                            Invoke(() =>
+                            {
+                                pb.Image?.Dispose();
+                                pb.Image = frame;
+                            });
+                        }
+                        else
+                        {
+                            unsuccessfulSwapAttempts++;
+                        }
+                        stopwatch.Stop();
+                        lastSwapTime = (int)stopwatch.ElapsedMilliseconds;
+                        //Thread.Sleep(Math.Max(0, (1000 / 60) - lastSwapTime));
+                    }
+                }
+                catch (Exception)
+                {
+
+                }
+            })
+            {
+                IsBackground = true,
+                Name = "SwapperThread"
+            };
+            swapper.Start();
         }
+
+        private void Metadata(Graphics g, params (string, object)[] values)
+        {
+            int y = 0;
+            foreach (var value in values)
+            {
+                g.DrawString(value.Item1 + ": " + value.Item2.ToString(), new Font("Arial", 12), Brushes.White, 0, y);
+                y += 20;
+            }
+        }
+
+        private List<Vector3> vertices = new List<Vector3>();
+        private List<int> triangles = new List<int>();
+        private int renderCalls;
 
         private void Render(List<GameObject> gameObjects, Camera camera, params (string, object)[] values)
         {
+            renderSemaphore.WaitOne();
             frameCount++;
             // first collect all vertices and triangles to be rendered
 
-            List<Vector3> vertices = new List<Vector3>();
-            List<int> triangles = new List<int>();
+            vertices.Clear();
+            triangles.Clear();
             int vertexOffset = 0;
 
-            // go through game objects by furthest to closest
-            foreach (var gameObject in gameObjects.OrderByDescending(x => Vector3.Distance(x.Position, camera.Position)))
+            // Ensure the camera's projection matrix is updated with the latest FOV and aspect ratio
+            MatrixD projectionMatrix = camera.UpdateProjectionMatrix();
+
+            // Go through game objects from furthest to closest
+            foreach (var gameObject in gameObjects.OrderBy(x => Vector3.Distance(x.Position, camera.Position)))
             {
                 if (gameObject.Mesh == null)
                 {
@@ -170,8 +353,7 @@ namespace RenderTest
                 vertexOffset += gameObject.Mesh.Vertices.Length;
             }
 
-            // then project all vertices
-
+            // Then project all vertices
             List<Vector2> projectedVertices = new List<Vector2>();
             List<int> actualTriangles = new List<int>();
             int triangleOffset = 0;
@@ -188,8 +370,7 @@ namespace RenderTest
 
                 if (p1 != null && p2 != null && p3 != null)
                 {
-                    // only render if points are clockwise
-
+                    // Only render if points are clockwise
                     var p1p2 = p2 - p1;
                     var p1p3 = p3 - p1;
 
@@ -212,54 +393,38 @@ namespace RenderTest
                 }
             }
 
-            // then draw all triangles#
+            // Then draw all triangles
             Bitmap bitmap;
             try
             {
-                bitmap = new Bitmap(pb.Width, pb.Height);
+                // Use camera's render resolution for the bitmap size
+                bitmap = new Bitmap((int)camera.RenderResolution.X, (int)camera.RenderResolution.Y);
             }
             catch (Exception)
             {
                 renderSemaphore.Release();
                 return;
             }
-            Vector2 offset = new Vector2(pb.Width / 2, pb.Height / 2);
+
+            Vector2 offset = new Vector2(bitmap.Width / 2, bitmap.Height / 2);
 
             using (Graphics g = Graphics.FromImage(bitmap))
             {
                 unrenderedFrames++;
 
                 g.Clear(System.Drawing.Color.Black);
-                // frame cnt
+                // Frame count
                 g.DrawString("Frame #" + frameCount.ToString(), new Font("Arial", 12), Brushes.White, 0, 0);
 
-                // fps
+                // FPS
                 var now = DateTime.Now.Millisecond;
                 int fps = (int)(1000f / (now - lastFrameTimestamp));
                 lastFps.Enqueue(fps);
                 if (lastFps.Count > 10)
                 {
-                    lastFps.Dequeue();
+                    lastFps.TryDequeue(out _);
                 }
                 lastFrameTimestamp = now;
-                g.DrawString("Fps: " + lastFps.Average().ToString(), new Font("Arial", 12), Brushes.White, 0, 20);
-
-                // vertices
-                g.DrawString("Vertices: " + projectedVertices.Count.ToString(), new Font("Arial", 12), Brushes.White, 0, 60);
-
-                // triangles
-                g.DrawString("Triangles: " + (actualTriangles.Count / 3).ToString(), new Font("Arial", 12), Brushes.White, 0, 80);
-
-                // unrendered frames
-                g.DrawString("Unrendered frames: " + unrenderedFrames.ToString(), new Font("Arial", 12), Brushes.White, 0, 40);
-
-                // values
-                int y = 100;
-                foreach (var value in values)
-                {
-                    g.DrawString(value.Item1 + ": " + value.Item2.ToString(), new Font("Arial", 12), Brushes.White, 0, y);
-                    y += 20;
-                }
 
                 for (int i = 0; i < actualTriangles.Count; i += 3)
                 {
@@ -279,6 +444,25 @@ namespace RenderTest
                     {
 
                     }
+                }
+
+                g.DrawString("Fps: " + lastFps.Average().ToString(), new Font("Arial", 12), Brushes.White, 0, 20);
+
+                // Vertices
+                g.DrawString("Vertices: " + projectedVertices.Count.ToString(), new Font("Arial", 12), Brushes.White, 0, 60);
+
+                // Triangles
+                g.DrawString("Triangles: " + (actualTriangles.Count / 3).ToString(), new Font("Arial", 12), Brushes.White, 0, 80);
+
+                // Unrendered frames
+                g.DrawString("Unrendered frames: " + unrenderedFrames.ToString(), new Font("Arial", 12), Brushes.White, 0, 40);
+
+                // Values
+                int y = 100;
+                foreach (var value in values)
+                {
+                    g.DrawString(value.Item1 + ": " + value.Item2.ToString(), new Font("Arial", 12), Brushes.White, 0, y);
+                    y += 20;
                 }
             }
 
@@ -300,8 +484,7 @@ namespace RenderTest
                 renderSemaphore.Release();
             }
 
-            // cleanup
-
+            // Cleanup
             vertices.Clear();
             triangles.Clear();
             projectedVertices.Clear();

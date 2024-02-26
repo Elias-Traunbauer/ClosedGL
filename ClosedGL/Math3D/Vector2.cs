@@ -227,6 +227,11 @@ namespace VRageMath
             return res;
         }
 
+        public static explicit operator Vector2(Vector3? v)
+        {
+            return new Vector2(v!.Value.X, v.Value.Y);
+        }
+
         /// <summary>
         /// Retrieves a string representation of the current object.
         /// </summary>
