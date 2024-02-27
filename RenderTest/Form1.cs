@@ -56,6 +56,10 @@ namespace RenderTest
             GameObject cub = new Cube();
             GameObject cub1 = new Cube();
             GameObject cubi = new Cube();
+            GameObject cub213123 = new Cube();
+            cub213123.Position = new Vector3D(20, 0, 0);
+            cub213123.Scale = new Vector3(6f);
+
             GameObject c = GameObject.CreateCube();
             c.Position = new Vector3(0, -50, 0);
             c.Scale = new Vector3(1000, 1, 1000);
