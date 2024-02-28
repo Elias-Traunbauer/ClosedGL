@@ -49,8 +49,8 @@ namespace RenderTest
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            GameObject house = GameObject.LoadFromObjFile("Models\\House.obj");
-            house.Position = new Vector3(0, 0, -50);
+            //GameObject house = GameObject.LoadFromObjFile("Models\\House.obj");
+            //house.Position = new Vector3(0, 0, -50);
             GameObject go = new Cube();
             GameObject cub = new Cube();
             GameObject cub1 = new Cube();
@@ -118,14 +118,7 @@ namespace RenderTest
                 criticalState.WaitOne();
                 while (!closing)
                 {
-                    Invoke(() =>
-                    {
-                        // set cursor position to the center of the screen only if the form is active
-                        if (Focused)
-                        {
-                            Cursor.Position = new System.Drawing.Point(Width / 2, Height / 2);
-                        }
-                    });
+                    Input.Update();
 
                     sw.Stop();
                     double deltaTime = (sw.ElapsedMilliseconds == 0 ? 1 : sw.ElapsedMilliseconds);
@@ -176,12 +169,7 @@ namespace RenderTest
                     MouseDelta.X = Input.GetMouseDeltaX();
                     MouseDelta.Y = Input.GetMouseDeltaY();
 
-                    if (MouseDelta.Length() > 0)
-                    {
-
-                    }
-
-                    MouseDelta *= 0.0001f;
+                    MouseDelta *= 0.001f;
 
                     cameraRotationVelocity = Vector3.Up * MouseDelta.X;
                     cameraRotationVelocity = Vector3.Right * MouseDelta.Y;
@@ -232,7 +220,6 @@ namespace RenderTest
                     {
                         renderCalls++;
                     }
-                    Input.Update();
                     //Render(new List<GameObject>() { go, cub, cub1, cubi }.Concat(gameObjects).ToList(), camera, ("FieldOfView", camera.FieldOfView), ("x", x), ("deltaTime", deltaTime), ("camPos", camera.Position), ("res", camera.RenderResolution));
                 }
                 criticalState.Release();

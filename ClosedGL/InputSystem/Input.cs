@@ -70,11 +70,7 @@ namespace ClosedGL.InputSystem
 
         private void MouseMove(object? sender, MouseEventArgs e)
         {
-            deltaX += (mouseX - e.X) * 2;
-            deltaY += (mouseY - e.Y) * 2;
-
-            mouseX = e.X;
-            mouseY = e.Y;
+            
         }
 
         private void MouseWheel(object? sender, MouseEventArgs e)
@@ -135,10 +131,15 @@ namespace ClosedGL.InputSystem
 
         public static void Update()
         {
-            Instance.mouseWheel = 0;
-            //Instance.mouseWheel = 0;
-            //Instance.mouseX = 0;
-            //Instance.mouseY = 0;
+            var mouse = System.Windows.Forms.Control.MousePosition;
+
+            var centerX = System.Windows.Forms.Screen.PrimaryScreen.Bounds.Width / 2;
+            var centerY = System.Windows.Forms.Screen.PrimaryScreen.Bounds.Height / 2;
+
+            Instance.deltaX = mouse.X - centerX;
+            Instance.deltaY = mouse.Y - centerY;
+
+            System.Windows.Forms.Cursor.Position = new System.Drawing.Point(centerX, centerY);
         }
 
         public static float GetMouseWheel()
@@ -165,14 +166,13 @@ namespace ClosedGL.InputSystem
         public static float GetMouseDeltaX()
         {
             var x = Instance.deltaX;
-            Instance.deltaX = 0;
+
             return x;
         }
 
         public static float GetMouseDeltaY()
         {
             var y = Instance.deltaY;
-            Instance.deltaY = 0;
             return y;
         }
     }
