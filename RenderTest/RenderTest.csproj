@@ -17,6 +17,12 @@
     <None Update="Models\House.obj">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Update="Models\volvo 740 turbo.mtl">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Models\volvo 740 turbo.obj">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Update="Textures\StandardCubeMap-2.jpg">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>

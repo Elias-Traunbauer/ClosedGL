@@ -12,7 +12,7 @@ namespace RenderTest
         public Form1()
         {
             InitializeComponent();
-            Input.Update();
+            Input.Initialize();
 
             // hide cursor
             Cursor.Hide();
@@ -49,8 +49,9 @@ namespace RenderTest
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            //GameObject house = GameObject.LoadFromObjFile("Models\\House.obj");
-            //house.Position = new Vector3(0, 0, -50);
+            GameObject house = GameObject.LoadFromObjFile("Models\\House.obj");
+            GameObject volvo = GameObject.LoadFromObjFile("Models\\volvo 740 turbo.obj");
+            house.Position = new Vector3(0, 0, -50);
             GameObject go = new Cube();
             GameObject cub = new Cube();
             GameObject cub1 = new Cube();
@@ -58,6 +59,11 @@ namespace RenderTest
             GameObject cub213123 = new Cube();
             cub213123.Position = new Vector3D(20, 0, 0);
             cub213123.Scale = new Vector3(6f);
+
+            GameObject c = GameObject.CreateCube();
+            c.Position = new Vector3(0, -50, 0);
+            c.Scale = new Vector3(1000, 1, 1000);
+            c.Rotation = Quaternion.CreateFromYawPitchRoll(0, 0, 0);
 
             cub.Position = new Vector3(30, 19, -2);
             cub.Scale = new Vector3(5f);
@@ -92,7 +98,6 @@ namespace RenderTest
             }
 
             Vector3D cameraVelocity = Vector3.Zero;
-            Vector3 cameraRotationVelocity = Vector3.Zero;
 
             go.Scale = new Vector3(7);
             IRenderer camera = new Camera()
@@ -111,6 +116,9 @@ namespace RenderTest
                     Controls.Add(pb);
                 });
 
+                var q = Quaternion.CreateFromYawPitchRoll(90, 0, 0);
+                var ypr = YawPitchRoll.FromQuaternion(q);
+
                 Stopwatch sw = new();
                 Stopwatch renderStopwatch = new();
                 float x = 0;
@@ -119,7 +127,6 @@ namespace RenderTest
                 while (!closing)
                 {
                     Input.Update();
-
                     sw.Stop();
                     double deltaTime = (sw.ElapsedMilliseconds == 0 ? 1 : sw.ElapsedMilliseconds);
                     sw.Restart();
@@ -149,17 +156,18 @@ namespace RenderTest
                     {
                         cameraVelocity += Vector3.Right * camera.Rotation * speed;
                     }
-                    if (Input.IsKeyDown(Keys.LShiftKey))
+                    if (Input.IsKeyDown(Keys.Space))
                     {
                         cameraVelocity += Vector3.Up * camera.Rotation * speed;
                     }
-                    if (Input.IsKeyDown(Keys.LControlKey))
+                    if (Input.IsKeyDown(Keys.LShiftKey))
                     {
                         cameraVelocity += Vector3.Down * camera.Rotation * speed;
                     }
 
                     if (Input.IsKeyDown(Keys.Escape))
                     {
+                        closing = true;
                         new Thread(() =>
                         {
                             Invoke(Close);
@@ -171,18 +179,21 @@ namespace RenderTest
 
                     MouseDelta *= 0.001f;
 
-                    cameraRotationVelocity = Vector3.Up * MouseDelta.X;
-                    cameraRotationVelocity = Vector3.Right * MouseDelta.Y;
-
                     cameraVelocity *= 0.95d;
 
                     camera.Position += cameraVelocity * deltaTime;
 
-                    var quaternion = Quaternion.CreateFromYawPitchRoll(cameraRotationVelocity.X, cameraRotationVelocity.Y, cameraRotationVelocity.Z);
+                    YawPitchRoll cameraRotation = YawPitchRoll.FromQuaternion(camera.Rotation);
 
-                    var camRot = camera.Rotation;
-                    camRot *= quaternion;
-                    camera.Rotation = camRot;
+                    cameraRotation.Yaw -= MouseDelta.X;
+                    cameraRotation.Pitch += MouseDelta.Y;
+
+                    // clamp pitch
+                    //cameraRotation.Y = (float)Math.Max(-Math.PI / 2, Math.Min(Math.PI / 2, cameraRotation.Y));
+
+                    var quaternion = Quaternion.CreateFromYawPitchRoll(cameraRotation.Yaw, cameraRotation.Pitch, 0);
+
+                    camera.Rotation = quaternion;
                     //camera.FieldOfView = (float)Math.Sin(x) * 35 + 60;
 
                     Vector3 cubPos = Vector3.Up * 30 * Quaternion.CreateFromAxisAngle(Vector3.Forward, x * 0.7f + (float)Math.Sin(x));
@@ -195,6 +206,7 @@ namespace RenderTest
 
                     cubi.Position = new Vector3(frameCount % 220f - 110, 19, -2);
 
+                    c.Rotation = Quaternion.CreateFromYawPitchRoll((float)Math.Sin(x), 0, 0);
                     //Vector3 camPos = Vector3.Backward * 30 * Quaternion.CreateFromAxisAngle(Vector3.Up, x * 0.2f);
                     //camera.Position = camPos;
 
@@ -209,10 +221,11 @@ namespace RenderTest
                     camera.RenderResolution = new Vector2I(Width, Height);
                     renderStopwatch.Restart();
                     //var res = camera.Render([go, cub, cub1, .. gameObjects/*, cubi,..   /*house*/]);
-                    var res = camera.Render(new List<GameObject>() { go, cub, cub1, }.Concat(gameObjects).ToList());
+                    //var res = camera.Render(new List<GameObject>() { go, cub, cub1, }.Concat(gameObjects).ToList());
+                    var res = camera.Render([house]);
                     renderStopwatch.Stop();
-                    lastFrametimes.Enqueue((int)deltaTime);
-                    if (lastFrametimes.Count > 100)
+                    lastFrametimes.Enqueue((int)renderStopwatch.ElapsedMilliseconds);
+                    if (lastFrametimes.Count > 20)
                     {
                         lastFrametimes.TryDequeue(out _);
                     }
@@ -236,7 +249,6 @@ namespace RenderTest
                     int frameCnt = 0;
                     Stopwatch stopwatch = new Stopwatch();
                     Stopwatch crauy = new Stopwatch();
-                    SetStyle(ControlStyles.DoubleBuffer | ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint, true);
                     while (!closing)
                     {
                         stopwatch.Restart();

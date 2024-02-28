@@ -326,6 +326,7 @@ namespace ClosedGL
                                         {
                                             // Pixel is closer, update depth buffer and render pixel
                                             depthBuffer[depthIndex] = depth;
+
                                             // sample the texture
                                             int textureX = (int)(interpolatedUV.X * texture.Width);
                                             int textureY = (int)(interpolatedUV.Y * texture.Height);
@@ -336,7 +337,9 @@ namespace ClosedGL
 
                                             byte[] pixel = texture.GetPixelAsBytes(textureX, textureY);
 
-                                            byte* currentLine = ptr + (y * stride);
+                                            int yCoord = (int)RenderResolution.Y - y - 1;
+
+                                            byte* currentLine = ptr + (yCoord * stride);
 
                                             // Set the pixel color in the bitmap
                                             currentLine[x * bytesPerPixel + 0] = pixel[0];
