@@ -100,7 +100,7 @@ namespace RenderTest
             Vector3D cameraVelocity = Vector3.Zero;
 
             go.Scale = new Vector3(7);
-            IRenderer camera = new CameraGPU()
+            IRenderer camera = new CameraGPUFragmented()
             {
                 FieldOfView = 70f,
                 Position = new Vector3(0, 0, 200),
@@ -224,6 +224,8 @@ namespace RenderTest
                     renderStopwatch.Restart();
                     //var res = camera.Render([go, cub, cub1, .. gameObjects/*, cubi,..   /*house*/]);
                     //var res = camera.Render(new List<GameObject>() { go, cub, cub1, }.Concat(gameObjects).ToList());
+                    //var res = camera.Render([go, cub, cub1, .. gameObjects]);
+                    
                     var res = camera.Render([house]);
                     renderStopwatch.Stop();
                     lastFrametimes.Enqueue((int)renderStopwatch.ElapsedMilliseconds);
