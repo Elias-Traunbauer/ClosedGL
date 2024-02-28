@@ -189,14 +189,13 @@ namespace ClosedGL.InputSystem
         public static float GetMouseDeltaX()
         {
             var x = Instance.deltaX;
-            Instance.deltaX = 0;
+
             return x;
         }
 
         public static float GetMouseDeltaY()
         {
             var y = Instance.deltaY;
-            Instance.deltaY = 0;
             return y;
         }
     }
