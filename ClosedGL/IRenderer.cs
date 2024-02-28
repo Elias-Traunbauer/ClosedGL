@@ -19,6 +19,7 @@ namespace ClosedGL
         Quaternion Rotation { get; set; }
 
         int GetFrame(out Bitmap? bitmap);
+        void Initialize(Texture[] textures);
         public bool Render(List<GameObject> gameObjects);
     }
 }

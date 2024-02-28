@@ -14,28 +14,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Models\House.obj">
+    <Content  Include="Models\**" >
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Models\volvo 740 turbo.mtl">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Models\volvo 740 turbo.obj">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Textures\StandardCubeMap-2.jpg">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Textures\triangle.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Textures\Untitled.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
+    </Content >
   </ItemGroup>
-
   <ItemGroup>
-    <Folder Include="Models\" />
+    <Content  Include="Textures\**" >
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content >
   </ItemGroup>
 
 </Project>

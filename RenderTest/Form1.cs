@@ -100,12 +100,14 @@ namespace RenderTest
             Vector3D cameraVelocity = Vector3.Zero;
 
             go.Scale = new Vector3(7);
-            IRenderer camera = new Camera()
+            IRenderer camera = new CameraGPU()
             {
                 FieldOfView = 70f,
                 Position = new Vector3(0, 0, 200),
                 RenderResolution = new Vector2I(Width, Height),
             };
+
+            camera.Initialize([house.Texture!]);
 
             var t = new Thread(() =>
             {

@@ -603,5 +603,10 @@ namespace ClosedGL
 
             return wA >= 0 && wB >= 0 && wC >= 0;
         }
+
+        public void Initialize(Texture[] textures)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

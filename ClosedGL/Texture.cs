@@ -77,6 +77,9 @@ namespace ClosedGL
             return new byte[] { b, g, r, a };
         }
 
-
+        public int DataLength()
+        {
+            return Data.Length;
+        }
     }
 }

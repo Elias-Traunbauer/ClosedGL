@@ -9,6 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="ILGPU" Version="1.5.1" />
+    <PackageReference Include="ILGPU.Algorithms" Version="1.5.1" />
     <PackageReference Include="MouseKeyHook" Version="5.7.1" />
     <PackageReference Include="System.Drawing.Common" Version="8.0.2" />
     <PackageReference Include="TraunisExtensions" Version="1.1.1" />
