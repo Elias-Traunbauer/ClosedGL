@@ -6,6 +6,8 @@ using System.Drawing;
 using System.Runtime.InteropServices;
 using VRageMath;
 using System;
+using ILGPU.IR.Values;
+using ILGPU.Backends;
 
 namespace ClosedGL
 {
@@ -15,6 +17,11 @@ namespace ClosedGL
     /// </summary>
     public class CameraGPUFragmented : GameObject, IRenderer
     {
+        const int TILE_SIZE = 8;
+        const int TILE_SIZE_SQUARED = TILE_SIZE * TILE_SIZE;
+        const int TRIANGLE_BUFFER_PER_TILE = 10000;
+
+        #region boring
         private static readonly Texture defaultTexture = new(1, 1)
         {
             // gray pixel
@@ -80,47 +87,93 @@ namespace ClosedGL
 
             return 0;
         }
+        #endregion
 
+        #region fields
         private readonly Vector3D Normal = Vector3D.Forward;
 
         private readonly Context context;
         private readonly Device device;
         private readonly Accelerator accelerator;
-        private Action<Index1D /*index*/,
+
+        // projection kernel
+        private Action<
+            Index1D           /*index*/,
+            VariableView<long> /*projectedVertexIndex*/,
+            ArrayView<Vec3>   /*vertices*/,
+            ArrayView<int>    /*triangles*/,
+            ArrayView<Vec3>   /*projectedVertices*/,
+            ArrayView<int>    /*uvIndices*/,
+            ArrayView<Vec3>   /*preBakedVectors*/> projectionKernel;
+
+        // triangle bin kernel
+        private Action<
+            Index1D /*index*/,
+            ArrayView<Vec3> /*projectedVertices*/,
+            VariableView<long> /*projectedVertexIndex*/,
+            ArrayView<int> /*tileTriangleIndices*/,
+            ArrayView<int> /*tileTriangleCounts*/,
+            ArrayView<Vec3> /*preBakedVectors*/> triangleBinningKernel;
+
+        // tile kernel
+        private Action<
+            Index1D /*index*/,
+            ArrayView<byte> /*frame*/,
             ArrayView<Vec2> /*uvs*/,
+
             ArrayView<byte> /*textures*/,
             ArrayView<int> /*textureLengths*/,
             ArrayView<int> /*textureWidths*/,
             ArrayView<int> /*textureHeights*/,
             ArrayView<int> /*trianglesPerTexture*/,
+
             ArrayView<Vec3> /*projectedVertices*/,
             ArrayView<int> /*uvIndices*/,
-            ArrayView<byte> /*projectedVertexSet*/,
-            ArrayView<float> /*depthBuffer*/,
-            ArrayView<byte> /*frame*/,
-            int /*fragmentWidth*/,
-            int /*projectedVerticesIndex*/,
-            ArrayView<Vec3> /*preBakedVectors*/ > fragmentKernel;
+            ArrayView<int> /*tileTriangleIndices*/,
+            ArrayView<int> /*tileTriangleCounts*/,
+            ArrayView<Vec3> /*preBakedVectors*/> tileKernel;
 
-        private Action<Index1D /*index*/,
-                       ArrayView<Vec3> /*vertices*/,
-                       ArrayView<int> /*triangles*/,
-                       ArrayView<Vec3> /*projectedVertices*/,
-                       ArrayView<int>, /*uvIndices*/
-                       ArrayView<byte> /*projectedVertexSet*/,
-                       ArrayView<Vec3> /*preBakedVectors*/> projectionKernel;
 
+        MemoryBuffer1D<byte, Stride1D.Dense> textureMemory;
+        MemoryBuffer1D<byte, Stride1D.Dense> frameMemory;
+        MemoryBuffer1D<float, Stride1D.Dense> depthBufferMemory;
+        MemoryBuffer1D<Vec3, Stride1D.Dense> preBakedVectorsMemory;
+        MemoryBuffer1D<int, Stride1D.Dense> textureLengthsMemory;
+        MemoryBuffer1D<int, Stride1D.Dense> textureWidthsMemory;
+        MemoryBuffer1D<int, Stride1D.Dense> textureHeightsMemory;
+        MemoryBuffer1D<int, Stride1D.Dense> trianglesPerTextureMemory;
+        MemoryBuffer1D<Vec3, Stride1D.Dense> projectedVerticesMemory;
+        MemoryBuffer1D<int, Stride1D.Dense> uvIndicesMemory;
+        MemoryBuffer1D<int, Stride1D.Dense> tileTriangleIndices;
+        MemoryBuffer1D<int, Stride1D.Dense> tileTriangleCounts;
+        #endregion
+
+        #region constructor/deconstructor
         public CameraGPUFragmented()
         {
+            bool debug = false;
             context = Context.CreateDefault();
-            device = context.Devices.First(x => x.AcceleratorType == AcceleratorType.Cuda);
-            accelerator = ((Device)device).CreateAccelerator(context);
+            device = context.Devices.First(x => debug ? x.AcceleratorType == AcceleratorType.CPU : x.AcceleratorType == AcceleratorType.Cuda);
+            accelerator = device.CreateAccelerator(context);
         }
 
         ~CameraGPUFragmented()
         {
             accelerator.Dispose();
             context.Dispose();
+
+            textureMemory.Dispose();
+            frameMemory.Dispose();
+            depthBufferMemory.Dispose();
+            preBakedVectorsMemory.Dispose();
+            textureLengthsMemory.Dispose();
+            textureWidthsMemory.Dispose();
+            textureHeightsMemory.Dispose();
+            trianglesPerTextureMemory.Dispose();
+            projectedVerticesMemory.Dispose();
+            uvIndicesMemory.Dispose();
+            tileTriangleIndices.Dispose();
+            tileTriangleCounts.Dispose();
         }
 
         public void Initialize(Texture[] textures)
@@ -138,34 +191,43 @@ namespace ClosedGL
             //ArrayView<byte> frame,
             //ArrayView< Vec3 > preBakedVectors) // view point (vpx, vpy, vpz)
 
-            fragmentKernel = accelerator.LoadAutoGroupedStreamKernel<
-                Index1D /*index*/,
-            ArrayView<Vec2> /*uvs*/,
-            ArrayView< byte > /*textures*/,
-            ArrayView<int> /*textureLengths*/,
-            ArrayView< int > /*textureWidths*/,
-            ArrayView<int> /*textureHeights*/,
-            ArrayView< int > /*trianglesPerTexture*/,
+            projectionKernel = accelerator.LoadAutoGroupedStreamKernel<Index1D /*index*/,
+            VariableView<long> /*projectedVertexIndex*/,
+            ArrayView<Vec3> /*vertices*/,
+            ArrayView<int> /*triangles*/,
             ArrayView<Vec3> /*projectedVertices*/,
-            ArrayView< int > /*uvIndices*/,
-            ArrayView<byte> /*projectedVertexSet*/,
-            ArrayView< float > /*depthBuffer*/,
-            ArrayView<byte> /*frame*/,
-            int /*fragmentWidth*/,
-            int /*projectedVerticesIndex*/,
-            ArrayView< Vec3 > /*preBakedVectors*/ > (FragmentKernel);
+            ArrayView<int> /*uvIndices*/,
+            ArrayView<Vec3> /*preBakedVectors*/>(ProjectionKernel);
 
-            projectionKernel = accelerator.LoadAutoGroupedStreamKernel<
-                               Index1D /*index*/,
-                               ArrayView<Vec3> /*vertices*/,
-                               ArrayView<int> /*triangles*/,
-                               ArrayView<Vec3> /*projectedVertices*/,
-                               ArrayView<int>, /*uvIndices*/
-                               ArrayView<byte> /*projectedVertexSet*/,
-                               ArrayView<Vec3> /*preBakedVectors*/>(ProjectionKernel);
+            triangleBinningKernel = accelerator.LoadAutoGroupedStreamKernel<
+                Index1D /*index*/,
+                ArrayView<Vec3> /*projectedVertices*/,
+                VariableView<long> /*projectedVertexIndex*/,
+                ArrayView<int> /*tileTriangleIndices*/,
+                ArrayView<int> /*tileTriangleCounts*/,
+                ArrayView<Vec3> /*preBakedVectors*/>(TriangleBinningKernel);
+
+            tileKernel = accelerator.LoadAutoGroupedStreamKernel<
+                Index1D         /*index*/,
+                ArrayView<byte> /*frame*/,
+                ArrayView<Vec2> /*uvs*/,
+
+                ArrayView<byte> /*textures*/,
+                ArrayView<int>  /*textureLengths*/,
+                ArrayView<int>  /*textureWidths*/,
+                ArrayView<int>  /*textureHeights*/,
+                ArrayView<int>  /*trianglesPerTexture*/,
+
+                ArrayView<Vec3> /*projectedVertices*/,
+                ArrayView<int>  /*uvIndices*/,
+                ArrayView<int>  /*tileTriangleIndices*/,
+                ArrayView<int>  /*tileTriangleCounts*/,
+                ArrayView<Vec3> /*preBakedVectors*/>(TileKernel);
 
             // allocate memory for textures
             int totalTextureLength = textures.Sum(x => x.Data.Length);
+
+            int tileCount = (int)RenderResolution.X / TILE_SIZE * (int)RenderResolution.Y / TILE_SIZE;
 
             textureMemory = accelerator.Allocate1D<byte>(totalTextureLength);
             frameMemory = accelerator.Allocate1D<byte>((int)RenderResolution.X * (int)RenderResolution.Y * 4);
@@ -177,7 +239,8 @@ namespace ClosedGL
             trianglesPerTextureMemory = accelerator.Allocate1D<int>(textures.Length);
             projectedVerticesMemory = accelerator.Allocate1D<Vec3>((int)RenderResolution.X * (int)RenderResolution.Y);
             uvIndicesMemory = accelerator.Allocate1D<int>((int)RenderResolution.X * (int)RenderResolution.Y);
-            projectedVertexSetMemory = accelerator.Allocate1D<byte>((int)RenderResolution.X * (int)RenderResolution.Y);
+            tileTriangleIndices = accelerator.Allocate1D<int>(tileCount * TRIANGLE_BUFFER_PER_TILE);
+            tileTriangleCounts = accelerator.Allocate1D<int>(tileCount);
 
             textureMemory.CopyFromCPU(textures.SelectMany(x => x.Data).ToArray());
             textureLengthsMemory.CopyFromCPU(textures.Select(x => x.Data.Length).ToArray());
@@ -187,6 +250,7 @@ namespace ClosedGL
 
             UpdatePreBakedVectors();
         }
+        #endregion
 
         void UpdatePreBakedVectors()
         {
@@ -197,18 +261,7 @@ namespace ClosedGL
             preBakedVectorsMemory.CopyFromCPU([viewPoint, renderResolution]);
         }
 
-        MemoryBuffer1D<byte, Stride1D.Dense> textureMemory;
-        MemoryBuffer1D<byte, Stride1D.Dense> frameMemory;
-        MemoryBuffer1D<float, Stride1D.Dense> depthBufferMemory;
-        MemoryBuffer1D<Vec3, Stride1D.Dense> preBakedVectorsMemory;
-        MemoryBuffer1D<int, Stride1D.Dense> textureLengthsMemory;
-        MemoryBuffer1D<int, Stride1D.Dense> textureWidthsMemory;
-        MemoryBuffer1D<int, Stride1D.Dense> textureHeightsMemory;
-        MemoryBuffer1D<int, Stride1D.Dense> trianglesPerTextureMemory;
-        MemoryBuffer1D<Vec3, Stride1D.Dense> projectedVerticesMemory;
-        MemoryBuffer1D<int, Stride1D.Dense> uvIndicesMemory;
-        MemoryBuffer1D<byte, Stride1D.Dense> projectedVertexSetMemory;
-
+        #region helper/algorithms
         public Vector2? ProjectPoint(Vector3D worldPoint)
         {
             // Calculate the view direction based on FOV and rotation
@@ -326,8 +379,7 @@ namespace ClosedGL
             // Calculate the projection matrix based on aspect ratio, field of view, near, and far clip planes
             return MatrixD.CreatePerspectiveFieldOfView(MathHelper.ToRadians(FieldOfView), AspectRatio, NearClipPlane, FarClipPlane);
         }
-
-        float[] depthBuffer = new float[0];
+        #endregion
 
         public bool Render(List<GameObject> gameObjects)
         {
@@ -343,84 +395,69 @@ namespace ClosedGL
                 out List<Texture> texs,
                 out List<int> trianglesPerTexture);
 
+            if (vertices.Count == 0)
+            {
+                swapChain.Enqueue([]);
+                return true;
+            }
+
             UpdatePreBakedVectors();
 
             frameMemory.MemSetToZero();
             depthBufferMemory.MemSetToZero();
             projectedVerticesMemory.MemSetToZero();
-            projectedVertexSetMemory.MemSetToZero();
-            projectedVertexSetMemory.MemSetToZero();
+            tileTriangleCounts.MemSetToZero();
+            tileTriangleIndices.MemSetToZero();
+
             var verticesMemory = accelerator.Allocate1D<Vec3>(vertices.Count);
             verticesMemory.CopyFromCPU(vertices.Select(x => new Vec3(x.X, x.Y, x.Z)).ToArray());
+
             var trianglesMemory = accelerator.Allocate1D<int>(triangles.Count);
-            trianglesMemory.CopyFromCPU(triangles.ToArray());
+            trianglesMemory.CopyFromCPU([.. triangles]);
+
             var uvsMemory = accelerator.Allocate1D<Vec2>(uvs.Count);
             uvsMemory.CopyFromCPU(uvs.Select(x => new Vec2(x.X, x.Y)).ToArray());
 
-            projectionKernel(
-                triangles.Count / 3,
-                               verticesMemory.View,
-                                              trianglesMemory.View,
-                                                             projectedVerticesMemory.View,
-                                                                            uvIndicesMemory.View,
-                                                                                           projectedVertexSetMemory.View,
-                                                                                                          preBakedVectorsMemory.View
-                                                                                                                     );
+            var counter = accelerator.Allocate1D<long>(1);
+            counter.MemSetToZero();
+            var counterView = counter.View.VariableView(0);
 
-            byte[] projectedVertexSet = new byte[projectedVertexSetMemory.Length];
-            projectedVertexSetMemory.CopyToCPU(projectedVertexSet);
-            Vec3[] projectedVertices = new Vec3[projectedVerticesMemory.Length];
-            projectedVerticesMemory.CopyToCPU(projectedVertices);
+            projectionKernel(                        
+                vertices.Count / 3,                /*index*/
+                counterView,                       /*projectedVertexIndex*/  
+                verticesMemory.View,               /*vertices*/  
+                trianglesMemory.View,              /*triangles*/  
+                projectedVerticesMemory.View,      /*projectedVertices*/  
+                uvIndicesMemory.View,              /*uvIndices*/  
+                preBakedVectorsMemory.View         /*preBakedVectors*/
+            );
 
-            for (int i = 0; i < projectedVertexSet.Length; i++)
-            {
-                if (projectedVertexSet[i] == 0)
-                {
-                    continue;
-                }
-                Vec3 v1 = projectedVertices[i];
-                Vec3 v2 = projectedVertices[i + 1];
-                Vec3 v3 = projectedVertices[i + 2];
+            int tileCount = (int)RenderResolution.X / TILE_SIZE * (int)RenderResolution.Y / TILE_SIZE;
 
-                // calculate min and max 
-                Vec2 vec1 = new(v1.x, v1.y);
-                Vec2 vec2 = new(v2.x, v2.y);
-                Vec2 vec3 = new(v3.x, v3.y);
+            triangleBinningKernel(
+                tileCount,                          /*index*/
+                projectedVerticesMemory.View,      /*projectedVertices*/
+                counterView,                       /*projectedVertexIndex*/
+                tileTriangleIndices.View,          /*tileTriangleIndices*/
+                tileTriangleCounts.View,           /*tileTriangleCounts*/
+                preBakedVectorsMemory.View         /*preBakedVectors*/
+            );
 
-                Vec2 min = Vec2.Min(Vec2.Min(vec1, vec2), vec3);
-                Vec2 max = Vec2.Max(Vec2.Max(vec1, vec2), vec3);
-
-                // clamp the min and max to the render resolution
-                min.x = XMath.Max(0, XMath.Min(RenderResolution.X - 1, min.x));
-                min.y = XMath.Max(0, XMath.Min(RenderResolution.Y - 1, min.y));
-                max.x = XMath.Max(0, XMath.Min(RenderResolution.X - 1, max.x));
-                max.y = XMath.Max(0, XMath.Min(RenderResolution.Y - 1, max.y));
-
-                // get the fragment width
-                int fragmentWidth = (int)(max.x - min.x);
-                int fragmentHeight = (int)(max.y - min.y);
-
-                // fragment index
-                int fragmentIndex = i;
-
-                fragmentKernel(
-                        fragmentWidth * fragmentHeight, // amount of times this kernel should be called
-                        uvsMemory.View,
-                        textureMemory.View,
-                        textureLengthsMemory.View,
-                        textureWidthsMemory.View,
-                        textureHeightsMemory.View,
-                        trianglesPerTextureMemory.View,
-                        projectedVerticesMemory.View,
-                        uvIndicesMemory.View,
-                        projectedVertexSetMemory.View,
-                        depthBufferMemory.View,
-                        frameMemory.View,
-                        fragmentWidth,
-                        i,
-                        preBakedVectorsMemory.View
-                   );
-            }
+            tileKernel(
+                tileCount,                       /*index*/
+                frameMemory.View,                  /*frame*/
+                uvsMemory.View,                    /*uvs*/
+                textureMemory.View,                /*textures*/
+                textureLengthsMemory.View,         /*textureLengths*/
+                textureWidthsMemory.View,          /*textureWidths*/
+                textureHeightsMemory.View,         /*textureHeights*/
+                trianglesPerTextureMemory.View,    /*trianglesPerTexture*/
+                projectedVerticesMemory.View,      /*projectedVertices*/
+                uvIndicesMemory.View,              /*uvIndices*/
+                tileTriangleIndices.View,          /*tileTriangleIndices*/
+                tileTriangleCounts.View,           /*tileTriangleCounts*/
+                preBakedVectorsMemory.View         /*preBakedVectors*/
+                         );        
 
             unsafe
             {
@@ -435,140 +472,18 @@ namespace ClosedGL
             verticesMemory.Dispose();
             trianglesMemory.Dispose();
             uvsMemory.Dispose();
+            counter.Dispose();
             return true;
         }
         const int bytesPerPixel = 4;
-        public static void FragmentKernel(
-            Index1D index,
-            ArrayView<Vec2> uvs,
-            ArrayView<byte> textures,
-            ArrayView<int> textureLengths,
-            ArrayView<int> textureWidths,
-            ArrayView<int> textureHeights,
-            ArrayView<int> trianglesPerTexture,
-            ArrayView<Vec3> projectedVertices,
-            ArrayView<int> uvIndices,
-            ArrayView<byte> projectedVertexSet,
-            ArrayView<float> depthBuffer,
-            ArrayView<byte> frame,
-            int fragmentWidth,
-            int projectedVerticesIndex,
-            ArrayView<Vec3> preBakedVectors) // view point (vpx, vpy, vpz)
-        {
-            Vec2 res = new(preBakedVectors[1].x, preBakedVectors[1].y);
-
-            int stride = (int)res.x * bytesPerPixel;
-
-            int x = index % fragmentWidth;
-            int y = index / fragmentWidth;
-
-            Vec3 p1 = projectedVertices[projectedVerticesIndex];
-            Vec3 p2 = projectedVertices[projectedVerticesIndex + 1];
-            Vec3 p3 = projectedVertices[projectedVerticesIndex + 2];
-
-            bool enoughUVs = uvs.Length > uvIndices[projectedVerticesIndex + 2];
-
-            Vec2 uv1 = enoughUVs ? uvs[uvIndices[projectedVerticesIndex]] : new Vec2(0, 0);
-            Vec2 uv2 = enoughUVs ? uvs[uvIndices[projectedVerticesIndex + 1]] : new Vec2(1, 0);
-            Vec2 uv3 = enoughUVs ? uvs[uvIndices[projectedVerticesIndex + 2]] : new Vec2(0, 1);
-
-            int currentTextureIndex = 0;
-            int currentTriangleCounter = 0;
-
-            int textureIndex = 0;
-
-            //for (int i = 0; i < index / 3; i++)
-            //{
-            //    currentTriangleCounter += 3;
-
-            //    if (currentTriangleCounter >= trianglesPerTexture[currentTextureIndex])
-            //    {
-            //        currentTriangleCounter = 0;
-            //        currentTextureIndex++;
-            //        textureIndex += textureLengths[currentTextureIndex];
-            //    }
-            //}
-            // we only use the first texture for now
-
-            int textureWidth = textureWidths[currentTextureIndex] * bytesPerPixel;
-            int textureHeight = textureHeights[currentTextureIndex];
-
-            Vec2 vec1 = new(p1.x, p1.y);
-            Vec2 vec2 = new(p2.x, p2.y);
-            Vec2 vec3 = new(p3.x, p3.y);
-
-            //Vec2 min = Vec2.Min(Vec2.Min(vec1, vec2), vec3);
-            //Vec2 max = Vec2.Max(Vec2.Max(vec1, vec2), vec3);
-
-            //// clamp the min and max to the render resolution
-            //min.x = XMath.Max(0, XMath.Min(res.x - 1, min.x));
-            //min.y = XMath.Max(0, XMath.Min(res.y - 1, min.y));
-            //max.x = XMath.Max(0, XMath.Min(res.x - 1, max.x));
-            //max.y = XMath.Max(0, XMath.Min(res.y - 1, max.y));
-
-            Vec2 point = new(x, y);
-            if (IsPointInTriangleKernel(point, vec1, vec2, vec3)
-                /*&& IsPointInRenderView(point)*/)
-            {
-                Vec3 barycentricCoords = CalculateBarycentricCoordinatesKernel(point, vec1, vec2, vec3);
-                Vec2 interpolatedUV = InterpolateUVKernel(barycentricCoords, uv1, uv2, uv3);
-
-                // Depth test
-                float depth = -barycentricCoords.x * p1.z + -barycentricCoords.y * p2.z + -barycentricCoords.z * p3.z;
-
-                int depthIndex = x + (int)res.x * y;
-                if (depth < depthBuffer[depthIndex] && false)
-                {
-                    return;
-                }
-                // Pixel is closer, update depth buffer and render pixel
-                depthBuffer[depthIndex] = depth;
-
-                // sample the texture
-                int textureX = (int)(interpolatedUV.x * textureWidth);
-                int textureY = (int)(interpolatedUV.y * textureHeight);
-
-                // clamp the texture coordinates
-                textureX = Math.Max(0, Math.Min(textureWidth - 1, textureX));
-                textureY = Math.Max(0, Math.Min(textureHeight - 1, textureY));
-
-                int texturePixelIndex = textureIndex + (textureX * bytesPerPixel) + (textureY * textureWidth);
-
-                int yCoord = (int)res.y - y - 1;
-
-                //byte* currentLine = ptr + (yCoord * stride);
-
-                // Set the pixel color in the bitmap
-                //currentLine[x * bytesPerPixel + 0] = pixel[0];
-                //currentLine[x * bytesPerPixel + 1] = pixel[1];
-                //currentLine[x * bytesPerPixel + 2] = pixel[2];
-                //currentLine[x * bytesPerPixel + 3] = pixel[3];
-                frame[x * bytesPerPixel + yCoord * stride + 0] = textures[texturePixelIndex];
-                frame[x * bytesPerPixel + yCoord * stride + 1] = textures[texturePixelIndex + 1];
-                frame[x * bytesPerPixel + yCoord * stride + 2] = textures[texturePixelIndex + 2];
-                frame[x * bytesPerPixel + yCoord * stride + 3] = textures[texturePixelIndex + 3];
-            }
-
-            // draw light purple debug lines between the points 199,67,117
-
-            //DrawLine(p1NonNullable, p2NonNullable, /*purle BGRA*/[117, 67, 199, 255], image, stride, ptr);
-            //DrawLine(p2NonNullable, p3NonNullable, /*purle BGRA*/[117, 67, 199, 255], image, stride, ptr);
-            //DrawLine(p3NonNullable, p1NonNullable, /*purle BGRA*/[117, 67, 199, 255], image, stride, ptr);
-
-            //// draw the square that got clamped
-            //DrawLine(min, new(min.X, max.Y), /*red BGRA*/[0, 0, 255, 255], image, stride, ptr);
-            //DrawLine(new(min.X, max.Y), max, /*red BGRA*/[0, 0, 255, 255], image, stride, ptr);
-            //DrawLine(max, new(max.X, min.Y), /*red BGRA*/[0, 0, 255, 255], image, stride, ptr);
-            //DrawLine(new(max.X, min.Y), min, /*red BGRA*/[0, 0, 255, 255], image, stride, ptr);
-        }
 
         public static void ProjectionKernel(
             Index1D index,
+            VariableView<long> projectedVertexIndex,
             ArrayView<Vec3> vertices,
             ArrayView<int> triangles,
             ArrayView<Vec3> projectedVertices,
             ArrayView<int> uvIndices,
-            ArrayView<byte> projectedVertexSet,
             ArrayView<Vec3> preBakedVectors) // view point (vpx, vpy, vpz)
         {
             Vec2 res = new Vec2(preBakedVectors[1].x, preBakedVectors[1].y);
@@ -603,16 +518,9 @@ namespace ClosedGL
                 var p2NonNullable = p2;
                 var p3NonNullable = p3;
 
-                //DrawPoint(p1NonNullable, 1, stride, ptr);
-                //DrawPoint(p2NonNullable, 1, stride, ptr);
-                //DrawPoint(p3NonNullable, 1, stride, ptr);
-
                 var p1Distance = p1NonNullable.z;
                 var p2Distance = p2NonNullable.z;
                 var p3Distance = p3NonNullable.z;
-
-                // check if the 2d points are clockwise
-                // if not, skip the triangle
 
                 // Only render if points are clockwise
                 var p1p2 = p2NonNullable - p1NonNullable;
@@ -625,19 +533,11 @@ namespace ClosedGL
                     return;
                 }
 
-                //if (IsTriangleOutOfBounds(p1NonNullable, p2NonNullable, p3NonNullable))
-                //{
-                //    continue;  // Skip the entire triangle if it's out of bounds
-                //}
-
                 Vec2 vec1 = new Vec2(p1NonNullable.x, p1NonNullable.y);
                 Vec2 vec2 = new Vec2(p2NonNullable.x, p2NonNullable.y);
                 Vec2 vec3 = new Vec2(p3NonNullable.x, p3NonNullable.y);
 
-                // calulate center of the triangle
-                Vec2 center = (vec1 + vec2 + vec3) / 3f;
-
-                int projectedVerticesIndex = (int)center.x + (int)res.x * (int)center.y;
+                long projectedVerticesIndex = Atomic.Add(ref projectedVertexIndex.Value, 3);
 
                 projectedVertices[projectedVerticesIndex] = p1;
                 projectedVertices[projectedVerticesIndex + 1] = p2;
@@ -646,25 +546,229 @@ namespace ClosedGL
                 uvIndices[projectedVerticesIndex] = triangles[triangleIndex];
                 uvIndices[projectedVerticesIndex + 1] = triangles[triangleIndex + 1];
                 uvIndices[projectedVerticesIndex + 2] = triangles[triangleIndex + 2];
-
-                projectedVertexSet[projectedVerticesIndex] = 1;
-
-                // store it into the projected vertices
-
-                // draw light purple debug lines between the points 199,67,117
-
-                //DrawLine(p1NonNullable, p2NonNullable, /*purle BGRA*/[117, 67, 199, 255], image, stride, ptr);
-                //DrawLine(p2NonNullable, p3NonNullable, /*purle BGRA*/[117, 67, 199, 255], image, stride, ptr);
-                //DrawLine(p3NonNullable, p1NonNullable, /*purle BGRA*/[117, 67, 199, 255], image, stride, ptr);
-
-                //// draw the square that got clamped
-                //DrawLine(min, new(min.X, max.Y), /*red BGRA*/[0, 0, 255, 255], image, stride, ptr);
-                //DrawLine(new(min.X, max.Y), max, /*red BGRA*/[0, 0, 255, 255], image, stride, ptr);
-                //DrawLine(max, new(max.X, min.Y), /*red BGRA*/[0, 0, 255, 255], image, stride, ptr);
-                //DrawLine(new(max.X, min.Y), min, /*red BGRA*/[0, 0, 255, 255], image, stride, ptr);
             }
         }
 
+        public static void TriangleBinningKernel(
+            Index1D index,
+            ArrayView<Vec3> projectedVertices,
+            VariableView<long> projectedVertexIndex,
+            ArrayView<int> tileTriangleIndices,
+            ArrayView<int> tileTriangleCounts,
+            ArrayView<Vec3> preBakedVectors
+            )
+        {
+            Vec2 res = new Vec2(preBakedVectors[1].x, preBakedVectors[1].y);
+
+            int tileIndex = index;
+
+            int tilesPerRow = (int)res.x / TILE_SIZE;
+
+            int tileX = tileIndex % tilesPerRow;
+            int tileY = tileIndex / tilesPerRow;
+
+            int tileStartX = tileX * TILE_SIZE;
+            int tileStartY = tileY * TILE_SIZE;
+
+            int tileEndX = tileStartX + TILE_SIZE;
+            int tileEndY = tileStartY + TILE_SIZE;
+
+            // now check all triangles if they are in the tile
+
+            long projectedVerticesCount = projectedVertexIndex.Value;
+
+            for (int i = 0; i < projectedVerticesCount; i+=3)
+            {
+                int triangleIndex = i;
+
+                Vec3 v1 = projectedVertices[triangleIndex];
+                Vec3 v2 = projectedVertices[triangleIndex + 1];
+                Vec3 v3 = projectedVertices[triangleIndex + 2];
+
+                Vec2 vec1 = new(v1.x, v1.y);
+                Vec2 vec2 = new(v2.x, v2.y);
+                Vec2 vec3 = new(v3.x, v3.y);
+
+                Vec2 min = Vec2.Min(Vec2.Min(vec1, vec2), vec3);
+                Vec2 max = Vec2.Max(Vec2.Max(vec1, vec2), vec3);
+
+                //if (IsTriangleOutOfBounds(min, max))
+                //{
+                //    continue;
+                //}
+
+                if (DoesOverlap(min, max, tileStartX, tileStartY, tileEndX, tileEndY))
+                {
+                    // register the triangle in the tile
+                    int tileTriangleIndex = tileTriangleCounts[tileIndex];
+                    tileTriangleIndices[tileIndex * TRIANGLE_BUFFER_PER_TILE + tileTriangleIndex] = i;
+                    tileTriangleCounts[tileIndex]++;
+                }
+
+                if (tileTriangleCounts[tileIndex] >= TRIANGLE_BUFFER_PER_TILE)
+                {
+                    // buffer overflow
+                    return;
+                }
+            }
+        }
+
+        static bool DoesOverlap(Vec2 min, Vec2 max, int tileStartX, int tileStartY, int tileEndX, int tileEndY)
+        {
+            // Check if AABB is to the right of the tile
+            if (min.x > tileEndX) return false;
+
+            // Check if AABB is to the left of the tile
+            if (max.x < tileStartX) return false;
+
+            // Check if AABB is above the tile
+            if (min.y > tileEndY) return false;
+
+            // Check if AABB is below the tile
+            if (max.y < tileStartY) return false;
+
+            // If none of the conditions are met, then there's an overlap
+            return true;
+        }
+
+        public static void TileKernel(
+            Index1D index,
+            ArrayView<byte> frame,
+            ArrayView<Vec2> uvs,
+
+            ArrayView<byte> textures,
+            ArrayView<int> textureLengths,
+            ArrayView<int> textureWidths,
+            ArrayView<int> textureHeights,
+            ArrayView<int> trianglesPerTexture,
+
+            ArrayView<Vec3> projectedVertices,
+            ArrayView<int> uvIndices,
+            ArrayView<int> tileTriangleIndices,
+            ArrayView<int> tileTriangleCounts,
+            ArrayView<Vec3> preBakedVectors) // view point (vpx, vpy, vpz), resolution (resx, resy)
+        {
+            Vec2 res = new Vec2(preBakedVectors[1].x, preBakedVectors[1].y);
+
+            int tileIndex = index;
+
+            int tilesPerRow = (int)res.x / TILE_SIZE;
+
+            int tileX = tileIndex % tilesPerRow;
+            int tileY = tileIndex / tilesPerRow;
+
+            int tileStartX = tileX * TILE_SIZE;
+            int tileStartY = tileY * TILE_SIZE;
+
+            int tileEndX = tileStartX + TILE_SIZE;
+            int tileEndY = tileStartY + TILE_SIZE;
+
+            int stride = (int)res.x * bytesPerPixel;
+
+            int projectedTrianglesInThisTileCount = tileTriangleCounts[tileIndex];
+
+            if (projectedTrianglesInThisTileCount == 0)
+            {
+                return;
+            }
+
+            int projectedVerticesStartIndex = tileIndex * TRIANGLE_BUFFER_PER_TILE;
+
+            for (int y = tileStartY; y < tileEndY; y++)
+            {
+                for (int x = tileStartX; x < tileEndX; x++)
+                {
+                    // check every triangle for this pixel
+                    int yCoord = (int)res.y - y - 1;
+                    int pixelIndex = yCoord * (int)res.x + x;
+
+                    if (pixelIndex >= res.x * res.y
+                        || pixelIndex < 0)
+                    {
+                        continue;
+                    
+                    }
+
+                    Vec2 pixel = new Vec2(x, y);
+
+                    for (int i = 0; i < projectedTrianglesInThisTileCount; i++)
+                    {
+                        int triangleIndex = tileTriangleIndices[projectedVerticesStartIndex + i];
+
+                        Vec3 v1 = projectedVertices[triangleIndex];
+                        Vec3 v2 = projectedVertices[triangleIndex + 1];
+                        Vec3 v3 = projectedVertices[triangleIndex + 2];
+
+                        Vec2 vec1 = new(v1.x, v1.y);
+                        Vec2 vec2 = new(v2.x, v2.y);
+                        Vec2 vec3 = new(v3.x, v3.y);
+
+                        Vec2 min = Vec2.Min(Vec2.Min(vec1, vec2), vec3);
+                        Vec2 max = Vec2.Max(Vec2.Max(vec1, vec2), vec3);
+
+                        if(IsPointInTriangleKernel(pixel, vec1, vec2, vec3))
+                        {
+                            // calculate the barycentric coordinates
+                            Vec3 barycentric = CalculateBarycentricCoordinatesKernel(pixel, vec1, vec2, vec3);
+
+                            bool enoughUVs = uvIndices[triangleIndex] < uvs.Length && uvIndices[triangleIndex + 1] < uvs.Length && uvIndices[triangleIndex + 2] < uvs.Length;
+
+                            Vec2 uv1 = enoughUVs ? uvs[uvIndices[triangleIndex]] : new Vec2(0, 0);
+                            Vec2 uv2 = enoughUVs ? uvs[uvIndices[triangleIndex + 1]] : new Vec2(1, 0);
+                            Vec2 uv3 = enoughUVs ? uvs[uvIndices[triangleIndex + 2]] : new Vec2(0, 1);
+
+                            // depth skipped for now
+
+                            Vec2 uv = InterpolateUVKernel(barycentric, uv1, uv2, uv3);
+
+                            int textureIndex = 0;
+                            int currentTextureIndex = 0;
+
+                            int currentTriangleCounter = 0;
+
+                            //for (int t = 0; t < triangleIndex / 3; t++)
+                            //{
+                            //    currentTriangleCounter += 3;
+
+                            //    if (currentTriangleCounter >= trianglesPerTexture[textureIndex])
+                            //    {
+                            //        currentTriangleCounter = 0;
+                            //        currentTextureIndex += textureLengths[textureIndex];
+                            //        textureIndex++;
+                            //    }
+                            //}
+
+                            int textureLength = textureLengths[textureIndex];
+                            int textureWidth = textureWidths[textureIndex];
+                            int textureHeight = textureHeights[textureIndex];
+
+                            int textureX = (int)(uv.x * textureWidth);
+                            int textureY = (int)(uv.y * textureHeight);
+
+                            // clamp the texture coordinates
+                            textureX = Math.Max(0, Math.Min(textureX, textureWidth - 2));
+                            textureY = Math.Max(0, Math.Min(textureY, textureHeight - 2));
+
+                            int texturePixelIndex = textureY * textureWidth + textureX;
+
+                            int textureArrayIndex = currentTextureIndex + texturePixelIndex * bytesPerPixel;
+
+                            int frameIndex = pixelIndex * bytesPerPixel;
+
+                            if (textureArrayIndex + 4 < textures.Length && frameIndex + 4 < textures.Length)
+                            {
+                                frame[frameIndex] = textures[textureArrayIndex];
+                                frame[frameIndex + 1] = textures[textureArrayIndex + 1];
+                                frame[frameIndex + 2] = textures[textureArrayIndex + 2];
+                                frame[frameIndex + 3] = textures[textureArrayIndex + 3];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        #region kernelmethods
         public static (bool, Vec3) ProjectPointLocalKernel(Vec3 v, Vec3 vp, Vec2 res)
         {
             Vec3 Backward = new Vec3(0, 0, 1);
@@ -895,6 +999,6 @@ namespace ClosedGL
 
             return wA >= 0 && wB >= 0 && wC >= 0;
         }
-
+        #endregion
     }
 }

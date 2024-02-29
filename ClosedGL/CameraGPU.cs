@@ -316,7 +316,7 @@ namespace ClosedGL
             UpdatePreBakedVectors();
 
             frameMemory.MemSetToZero();
-            depthBufferMemory.MemSetToZero();
+            depthBufferMemory.CopyFromCPU(Enumerable.Repeat<float>(float.MaxValue, (int)depthBufferMemory.Length).ToArray());
             var verticesMemory = accelerator.Allocate1D<Vec3>(vertices.Count);
             verticesMemory.CopyFromCPU(vertices.Select(x => new Vec3(x.X, x.Y, x.Z)).ToArray());
             var trianglesMemory = accelerator.Allocate1D<int>(triangles.Count);
@@ -402,7 +402,7 @@ namespace ClosedGL
             //}
             // we only use the first texture for now
 
-            int textureWidth = textureWidths[currentTextureIndex] * bytesPerPixel;
+            int textureWidth = textureWidths[currentTextureIndex];
             int textureHeight = textureHeights[currentTextureIndex];
 
             if (successp1 && successp2 && successp3)
@@ -463,12 +463,12 @@ namespace ClosedGL
                             Vec2 interpolatedUV = (uvs.Length > triangles[triangleIndex + 2]) ? InterpolateUVKernel(barycentricCoords, uvs[triangles[triangleIndex]], uvs[triangles[triangleIndex + 1]], uvs[triangles[triangleIndex + 2]]) : new Vec2(0, 0);
 
                             // Depth test
-                            float depth = -barycentricCoords.x * p1Distance + -barycentricCoords.y * p2Distance + -barycentricCoords.z * p3Distance;
-
+                            float depth = barycentricCoords.x * p1Distance + barycentricCoords.y * p2Distance + barycentricCoords.z * p3Distance;
+                            depth = depth;
                             int depthIndex = x + (int)res.x * y;
-                            if (depth < depthBuffer[depthIndex] && false)
+                            if (depth > depthBuffer[depthIndex])
                             {
-                                return;
+                                continue ;
                             }
                             // Pixel is closer, update depth buffer and render pixel
                             depthBuffer[depthIndex] = depth;
@@ -478,10 +478,10 @@ namespace ClosedGL
                             int textureY = (int)(interpolatedUV.y * textureHeight);
 
                             // clamp the texture coordinates
-                            textureX = Math.Max(0, Math.Min(textureWidth - 1, textureX));
-                            textureY = Math.Max(0, Math.Min(textureHeight - 1, textureY));
+                            textureX = Math.Max(0, Math.Min(textureWidth - 2, textureX));
+                            textureY = Math.Max(0, Math.Min(textureHeight - 2, textureY));
 
-                            int texturePixelIndex = textureIndex + (textureX * bytesPerPixel) + (textureY * textureWidth);
+                            long texturePixelIndex = textureIndex + (textureX) + (textureY * textureWidth);
 
                             int yCoord = (int)res.y - y - 1;
 
@@ -492,10 +492,10 @@ namespace ClosedGL
                             //currentLine[x * bytesPerPixel + 1] = pixel[1];
                             //currentLine[x * bytesPerPixel + 2] = pixel[2];
                             //currentLine[x * bytesPerPixel + 3] = pixel[3];
-                            frame[x * bytesPerPixel + yCoord * stride + 0] = textures[texturePixelIndex];
-                            frame[x * bytesPerPixel + yCoord * stride + 1] = textures[texturePixelIndex + 1];
-                            frame[x * bytesPerPixel + yCoord * stride + 2] = textures[texturePixelIndex + 2];
-                            frame[x * bytesPerPixel + yCoord * stride + 3] = textures[texturePixelIndex + 3];
+                            frame[x * bytesPerPixel + yCoord * stride + 0] = textures[texturePixelIndex * bytesPerPixel];
+                            frame[x * bytesPerPixel + yCoord * stride + 1] = textures[texturePixelIndex * bytesPerPixel + 1];
+                            frame[x * bytesPerPixel + yCoord * stride + 2] = textures[texturePixelIndex * bytesPerPixel + 2];
+                            frame[x * bytesPerPixel + yCoord * stride + 3] = textures[texturePixelIndex * bytesPerPixel + 3];
 
                             renderedTriangles++;
                         }

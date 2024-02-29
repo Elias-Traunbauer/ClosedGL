@@ -100,10 +100,10 @@ namespace RenderTest
             Vector3D cameraVelocity = Vector3.Zero;
 
             go.Scale = new Vector3(7);
-            IRenderer camera = new CameraGPUFragmented()
+            IRenderer camera = new CameraGPU()
             {
                 FieldOfView = 70f,
-                Position = new Vector3(0, 0, 200),
+                Position = new Vector3(0, 0, 40),
                 RenderResolution = new Vector2I(Width, Height),
             };
 
@@ -188,14 +188,14 @@ namespace RenderTest
                     YawPitchRoll cameraRotation = YawPitchRoll.FromQuaternion(camera.Rotation);
 
                     cameraRotation.Yaw -= MouseDelta.X;
-                    cameraRotation.Pitch += MouseDelta.Y;
+                    cameraRotation.Pitch += MouseDelta.X;
 
                     // clamp pitch
                     //cameraRotation.Y = (float)Math.Max(-Math.PI / 2, Math.Min(Math.PI / 2, cameraRotation.Y));
 
-                    var quaternion = Quaternion.CreateFromYawPitchRoll(cameraRotation.Yaw, cameraRotation.Pitch, 0);
+                    var quaternion = Quaternion.CreateFromYawPitchRoll(-MouseDelta.X, -MouseDelta.Y, 0);
 
-                    camera.Rotation = quaternion;
+                    camera.Rotation *= quaternion;
                     //camera.FieldOfView = (float)Math.Sin(x) * 35 + 60;
 
                     Vector3 cubPos = Vector3.Up * 30 * Quaternion.CreateFromAxisAngle(Vector3.Forward, x * 0.7f + (float)Math.Sin(x));
@@ -205,6 +205,8 @@ namespace RenderTest
                     cub1.Position = cudddbPos + Vector3.Left * 20;
                     cub1.Scale = new Vector3(7);
                     cub1.Rotation = Quaternion.CreateFromYawPitchRoll(0, (float)Math.Sin(x), 0);
+
+                    volvo.Rotation = Quaternion.CreateFromYawPitchRoll((float)Math.Sin(x) * 3, 0, 0);
 
                     cubi.Position = new Vector3(frameCount % 220f - 110, 19, -2);
 
@@ -226,7 +228,7 @@ namespace RenderTest
                     //var res = camera.Render(new List<GameObject>() { go, cub, cub1, }.Concat(gameObjects).ToList());
                     //var res = camera.Render([go, cub, cub1, .. gameObjects]);
                     
-                    var res = camera.Render([house]);
+                    var res = camera.Render([cub, cub1, ..gameObjects, house]);
                     renderStopwatch.Stop();
                     lastFrametimes.Enqueue((int)renderStopwatch.ElapsedMilliseconds);
                     if (lastFrametimes.Count > 20)
