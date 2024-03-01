@@ -100,7 +100,7 @@ namespace RenderTest
             Vector3D cameraVelocity = Vector3.Zero;
 
             go.Scale = new Vector3(7);
-            IRenderer camera = new CameraGPU()
+            IRenderer camera = new CameraGPUFragmentedTiled()
             {
                 FieldOfView = 70f,
                 Position = new Vector3(0, 0, 40),
@@ -193,7 +193,18 @@ namespace RenderTest
                     // clamp pitch
                     //cameraRotation.Y = (float)Math.Max(-Math.PI / 2, Math.Min(Math.PI / 2, cameraRotation.Y));
 
-                    var quaternion = Quaternion.CreateFromYawPitchRoll(-MouseDelta.X, -MouseDelta.Y, 0);
+                    float roll = 0;
+
+                    if (Input.IsKeyDown(Keys.Q))
+                    {
+                        roll = 0.01f;
+                    }
+                    if (Input.IsKeyDown(Keys.E))
+                    {
+                        roll = -0.01f;
+                    }
+
+                    var quaternion = Quaternion.CreateFromYawPitchRoll(-MouseDelta.X, -MouseDelta.Y, roll);
 
                     camera.Rotation *= quaternion;
                     //camera.FieldOfView = (float)Math.Sin(x) * 35 + 60;
