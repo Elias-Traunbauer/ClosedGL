@@ -107,6 +107,7 @@ namespace ClosedGL
         // triangle bin kernel
         private Action<
             Index1D /*triangleIndex*/,
+            VariableView<long> /*triangleCount*/,
             ArrayView<Triangle> /*vertexBuffer*/,
             VariableView<long> /*projectedVerticesNextIndex*/, /* effectively the vertex count */
             ArrayView<int> /*tileTriangleIndexBuffer*/,
@@ -196,6 +197,7 @@ namespace ClosedGL
 
             triangleBinningKernel = accelerator.LoadAutoGroupedStreamKernel<
                 Index1D /*triangleIndex*/,
+                VariableView<long> /*triangleCount*/,
                 ArrayView<Triangle> /*vertexBuffer*/,
                 VariableView<long> /*projectedVerticesNextIndex*/, /* effectively the vertex count */
                 ArrayView<int> /*tileTriangleIndexBuffer*/,
@@ -303,6 +305,7 @@ namespace ClosedGL
         /// </summary>
         public static void BinningKernel(
             Index1D triangleIndex,
+            VariableView<long> triangleCount,
             ArrayView<Triangle> vertexBuffer,
             VariableView<long> projectedVerticesNextIndex, /* effectively the vertex count */
             ArrayView<int> tileTriangleIndexBuffer,
@@ -659,9 +662,18 @@ namespace ClosedGL
             );
 
             int tileCount = (int)RenderResolution.X / TILE_SIZE * (int)RenderResolution.Y / TILE_SIZE;
+            long triangleCount = counterView.Value;
+            int gpuCores = accelerator.MaxNumThreadsPerGroup;
+
+            int trianglesPerCore = (int)(triangleCount / gpuCores);
+
+            var triangleCountMemory = accelerator.Allocate1D<long>(1);
+            triangleCountMemory.CopyFromCPU([triangleCount]);
+            var triangleCountView = triangleCountMemory.View.VariableView(0);
 
             triangleBinningKernel(
-                triangles.Count / 3,            /*triangleIndex*/
+                gpuCores,                       /*triangleIndex*/
+                triangleCountView,              /*trianglesPerCore*/
                 projectedTrianglesMemory.View,  /*vertexBuffer*/
                 counterView,                    /*projectedVerticesNextIndex*/
                 tileTriangleIndices.View,       /*tileTriangleIndexBuffer*/

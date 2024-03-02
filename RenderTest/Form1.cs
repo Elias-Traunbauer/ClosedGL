@@ -239,7 +239,7 @@ namespace RenderTest
                     //var res = camera.Render(new List<GameObject>() { go, cub, cub1, }.Concat(gameObjects).ToList());
                     //var res = camera.Render([go, cub, cub1, .. gameObjects]);
                     
-                    var res = camera.Render([cub, cub1]);
+                    var res = camera.Render([house]);
                     renderStopwatch.Stop();
                     lastFrametimes.Enqueue((int)renderStopwatch.ElapsedMilliseconds);
                     if (lastFrametimes.Count > 20)
