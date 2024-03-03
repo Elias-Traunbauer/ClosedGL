@@ -364,7 +364,7 @@ namespace ClosedGL
 
         float[] depthBuffer = new float[0];
 
-        public bool Render(List<GameObject> gameObjects)
+        public Dictionary<string, object> Render(List<GameObject> gameObjects)
         {
             Thread.Sleep(1);
             //if (swapChain.Count > 2)
@@ -444,7 +444,7 @@ namespace ClosedGL
                 // queue the frame
                 swapChain.Enqueue(image);
             }
-            return true;
+            return [];
         }
 
         private unsafe void DrawPoint(Vector2 p1NonNullable, float radius, int stride, byte* ptr)

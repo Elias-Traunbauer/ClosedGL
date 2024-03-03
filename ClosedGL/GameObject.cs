@@ -49,7 +49,7 @@ namespace ClosedGL
             return Vector3.Transform(worldVector, worldMatrixInverse);
         }
 
-        public Vector3 TransformToLocalBeta(Vector3 worldVector)
+        public Vec3 TransformToLocalBeta(Vector3 worldVector)
         {
             var worldDirection = worldVector - Position;
 
@@ -62,13 +62,13 @@ namespace ClosedGL
 
                 // Transform world direction to local direction
                 Vector3D localDir = Vector3D.TransformNormal(worldDirectionNormalized, MatrixD.Transpose(this.WorldMatrix));
-
-                return localDir * directionLength;
+                var res = localDir * directionLength;
+                return new Vec3((float)res.X, (float)res.Y, (float)res.Z);
             }
             else
             {
                 // Handle zero-length vector case
-                return Vector3.Zero;
+                return new Vec3(0, 0, 0);
             }
         }
 

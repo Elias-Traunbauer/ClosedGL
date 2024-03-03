@@ -299,7 +299,7 @@ namespace ClosedGL
 
         float[] depthBuffer = new float[0];
 
-        public bool Render(List<GameObject> gameObjects)
+        public Dictionary<string, object> Render(List<GameObject> gameObjects)
         {
             if (swapChain.Count > 2)
             {
@@ -352,7 +352,7 @@ namespace ClosedGL
             verticesMemory.Dispose();
             trianglesMemory.Dispose();
             uvsMemory.Dispose();
-            return true;
+            return [];
         }
         const int bytesPerPixel = 4;
         public static void RenderKernel(
@@ -754,6 +754,8 @@ namespace ClosedGL
         public float x;
         public float y;
         public float z;
+        private double y1;
+        private double z1;
 
         public Vec3(float x, float y, float z)
         {

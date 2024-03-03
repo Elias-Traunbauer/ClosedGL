@@ -204,7 +204,7 @@ namespace ClosedGL
 
         float[] depthBuffer = new float[0];
 
-        public bool Render(List<GameObject> gameObjects)
+        public Dictionary<string, object> Render(List<GameObject> gameObjects)
         {
             //if (swapChain.Count > 2)
             //{
@@ -367,7 +367,7 @@ namespace ClosedGL
                 // queue the frame
                 swapChain.Enqueue(image);
             }
-            return true;
+            return [];
         }
 
         private bool IsPointInRenderView(Vector2 point)

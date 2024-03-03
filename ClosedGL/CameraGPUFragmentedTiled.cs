@@ -2,6 +2,7 @@
 using ILGPU.Algorithms;
 using ILGPU.Runtime;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using VRageMath;
@@ -14,9 +15,11 @@ namespace ClosedGL
     /// </summary>
     public class CameraGPUFragmentedTiled : GameObject, IRenderer
     {
-        const int TILE_SIZE = 8;
+        const int TILE_SIZE = 3;
         const int TILE_SIZE_SQUARED = TILE_SIZE * TILE_SIZE;
-        const int TRIANGLE_BUFFER_PER_TILE = 10000;
+        const int TRIANGLE_SIZE_SPLIT_THRESHOLD = 3000;
+        const int TRIANGLE_SIZE_SPLIT_4_THRESHOLD = 9000;
+        const int TRIANGLE_BUFFER_PER_TILE = 500;
 
         #region boring
         private static readonly Texture defaultTexture = new(1, 1)
@@ -137,7 +140,7 @@ namespace ClosedGL
         MemoryBuffer1D<int, Stride1D.Dense> textureWidthsMemory;
         MemoryBuffer1D<int, Stride1D.Dense> textureHeightsMemory;
         MemoryBuffer1D<int, Stride1D.Dense> trianglesPerTextureMemory;
-        MemoryBuffer1D<Triangle, Stride1D.Dense> projectedTrianglesMemory;
+        MemoryBuffer1D<Triangle, Stride1D.Dense> vertexBufferMemory;
         MemoryBuffer1D<int, Stride1D.Dense> uvIndicesMemory;
         MemoryBuffer1D<int, Stride1D.Dense> tileTriangleIndices;
         MemoryBuffer1D<int, Stride1D.Dense> tileTriangleCounts;
@@ -165,7 +168,7 @@ namespace ClosedGL
             textureWidthsMemory.Dispose();
             textureHeightsMemory.Dispose();
             trianglesPerTextureMemory.Dispose();
-            projectedTrianglesMemory.Dispose();
+            vertexBufferMemory.Dispose();
             uvIndicesMemory.Dispose();
             tileTriangleIndices.Dispose();
             tileTriangleCounts.Dispose();
@@ -230,7 +233,7 @@ namespace ClosedGL
             textureWidthsMemory = accelerator.Allocate1D<int>(textures.Length);
             textureHeightsMemory = accelerator.Allocate1D<int>(textures.Length);
             trianglesPerTextureMemory = accelerator.Allocate1D<int>(textures.Length);
-            projectedTrianglesMemory = accelerator.Allocate1D<Triangle>(10_000_000);
+            vertexBufferMemory = accelerator.Allocate1D<Triangle>(10_000_000);
             uvIndicesMemory = accelerator.Allocate1D<int>((int)RenderResolution.X * (int)RenderResolution.Y);
             tileTriangleIndices = accelerator.Allocate1D<int>(tileCount * TRIANGLE_BUFFER_PER_TILE);
             tileTriangleCounts = accelerator.Allocate1D<int>(tileCount);
@@ -290,13 +293,66 @@ namespace ClosedGL
                     return;
                 }
 
-                long projectedVerticesIndex = Atomic.Add(ref projectedVerticesNextIndex.Value, 1);
+                // calcuate area
+                Vec2 min = Vec2.Min(Vec2.Min(new Vec2(p1.x, p1.y), new Vec2(p2.x, p2.y)), new Vec2(p3.x, p3.y));
+                Vec2 max = Vec2.Max(Vec2.Max(new Vec2(p1.x, p1.y), new Vec2(p2.x, p2.y)), new Vec2(p3.x, p3.y));
+                float area = (max.x - min.x) * (max.y - min.y);
 
-                vertexBuffer[projectedVerticesIndex] = 
-                    new Triangle(
-                        /*vertices*/     p1, p2, p3,
-                        /*textureIndex*/ textureIndex, 
-                        /*uvIndices*/    triangles[verticesStartIndex + 0], triangles[verticesStartIndex + 1], triangles[verticesStartIndex + 2]);
+                Triangle[] results;
+                Triangle originalTriangle = new Triangle(
+                        p1, p2, p3,
+                        textureIndex,
+                        triangles[verticesStartIndex + 0], triangles[verticesStartIndex + 1], triangles[verticesStartIndex + 2]
+                        );
+                if (area > TRIANGLE_SIZE_SPLIT_4_THRESHOLD)
+                {
+                    results = originalTriangle.Split(Triangle.TriangleSplitAmount.Eight);
+                }
+                else if (area > TRIANGLE_SIZE_SPLIT_THRESHOLD)
+                {
+                    results = originalTriangle.Split();
+                }
+                else
+                {
+                    results = [originalTriangle];
+                }
+                int finalResultsLength = 0;
+                Triangle[] finalResultsBuffer = new Triangle[8 * 8];
+                for (int k = 0; k < results.Length; k++)
+                {
+                    Vec2 vv1 = results[k].A;
+                    Vec2 vv2 = results[k].B;
+                    Vec2 vv3 = results[k].C;
+                    min = Vec2.Min(Vec2.Min(vv1, vv2), vv3);
+                    max = Vec2.Max(Vec2.Max(vv1, vv2), vv3);
+                    area = (max.x - min.x) * (max.y - min.y);
+
+                    Triangle[] temp;
+                    if (area > TRIANGLE_SIZE_SPLIT_4_THRESHOLD)
+                    {
+                        temp = originalTriangle.Split(Triangle.TriangleSplitAmount.Eight);
+                    }
+                    else if (area > TRIANGLE_SIZE_SPLIT_THRESHOLD)
+                    {
+                        temp = originalTriangle.Split();
+                    }
+                    else
+                    {
+                        temp = [originalTriangle];
+                    }
+                    for (int l = 0; l < temp.Length; l++)
+                    {
+                        finalResultsBuffer[finalResultsLength + l] = temp[l];
+                    }
+                    finalResultsLength += temp.Length;
+                }
+
+                for (int t = 0; t < finalResultsLength; t++)
+                {
+                    long projectedVerticesIndex = Atomic.Add(ref projectedVerticesNextIndex.Value, 1);
+
+                    vertexBuffer[projectedVerticesIndex] = finalResultsBuffer[t];
+                }
             }
         }
 
@@ -315,45 +371,52 @@ namespace ClosedGL
         {
             long projectedVerticesCount = projectedVerticesNextIndex.Value;
 
-            Triangle triangle = vertexBuffer[triangleIndex];
+            long trianglesToProcess = triangleCount.Value;
 
-            Vec2 res = new Vec2(renderResoultion.Value.x, renderResoultion.Value.y);
+            long triangleStartIndex = triangleIndex * trianglesToProcess;
 
-            Vec2 min = Vec2.Min(Vec2.Min(triangle.v1, triangle.v2), triangle.v3);
-            Vec2 max = Vec2.Max(Vec2.Max(triangle.v1, triangle.v2), triangle.v3);
-
-            // clamp the min and max to the screen
-            min = Vec2.Max(min, new Vec2(0, 0));
-            max = Vec2.Min(max, res);
-
-            // find out which tiles the triangle belongs to
-            // we do it smart, by findint the nearest tile to the min and max point of the triangle
-
-            int tilesPerRow = (int)res.x / TILE_SIZE;
-
-            int startTileX = (int)min.x / TILE_SIZE;
-            int startTileY = (int)min.y / TILE_SIZE;
-
-            int endTileX = (int)max.x / TILE_SIZE;
-            int endTileY = (int)max.y / TILE_SIZE;
-
-            for (int y = startTileY; y <= endTileY; y++)
+            for (long i = triangleStartIndex; i < triangleStartIndex + trianglesToProcess; i++)
             {
-                for (int x = startTileX; x <= endTileX; x++)
+                Triangle triangle = vertexBuffer[i];
+
+                Vec2 res = new Vec2(renderResoultion.Value.x, renderResoultion.Value.y);
+
+                Vec2 min = Vec2.Min(Vec2.Min(triangle.A, triangle.B), triangle.C);
+                Vec2 max = Vec2.Max(Vec2.Max(triangle.A, triangle.B), triangle.C);
+
+                // clamp the min and max to the screen
+                min = Vec2.Max(min, new Vec2(0, 0));
+                max = Vec2.Min(max, res);
+
+                // find out which tiles the triangle belongs to
+                // we do it smart, by findint the nearest tile to the min and max point of the triangle
+
+                int tilesPerRow = (int)res.x / TILE_SIZE;
+
+                int startTileX = (int)min.x / TILE_SIZE;
+                int startTileY = (int)min.y / TILE_SIZE;
+
+                int endTileX = (int)max.x / TILE_SIZE;
+                int endTileY = (int)max.y / TILE_SIZE;
+
+                for (int y = startTileY; y <= endTileY; y++)
                 {
-                    int tileIndex = y * tilesPerRow + x;
-
-                    if (tileIndex >= tileTriangleCountBuffer.Length)
+                    for (int x = startTileX; x <= endTileX; x++)
                     {
-                        continue;
-                    }
+                        int tileIndex = y * tilesPerRow + x;
 
-                    int tileTriangleCount = tileTriangleCountBuffer[tileIndex];
+                        if (tileIndex >= tileTriangleCountBuffer.Length)
+                        {
+                            continue;
+                        }
 
-                    if (tileTriangleCount < TRIANGLE_BUFFER_PER_TILE)
-                    {
-                        var index = Atomic.Add(ref tileTriangleCountBuffer[tileIndex], 1);
-                        tileTriangleIndexBuffer[tileIndex * TRIANGLE_BUFFER_PER_TILE + index] = triangleIndex;
+                        int tileTriangleCount = tileTriangleCountBuffer[tileIndex];
+
+                        if (tileTriangleCount < TRIANGLE_BUFFER_PER_TILE)
+                        {
+                            var index = Atomic.Add(ref tileTriangleCountBuffer[tileIndex], 1);
+                            tileTriangleIndexBuffer[tileIndex * TRIANGLE_BUFFER_PER_TILE + index] = (int)i;
+                        }
                     }
                 }
             }
@@ -413,37 +476,37 @@ namespace ClosedGL
                     }
 
                     Vec2 pixel = new Vec2(x, y);
-
+                    bool didapixel = false;
                     for (int i = 0; i < projectedTrianglesInThisTileCount; i++)
                     {
                         int triangleIndex = tileTriangleIndexBuffer[projectedTrianglesStartIndex + i];
 
                         Triangle triangle = vertexBuffer[triangleIndex];
 
-                        if (IsPointInTriangleKernel(pixel, triangle.v1, triangle.v2, triangle.v3))
-                        {
-                            // calculate the barycentric coordinates
-                            Vec3 barycentric = CalculateBarycentricCoordinatesKernel(pixel, triangle.v1, triangle.v2, triangle.v3);
+                        // calculate the barycentric coordinates
+                        Vec3 barycentric = CalculateBarycentricCoordinatesKernel(pixel, triangle.A, triangle.B, triangle.C);
 
+                        // Depth test
+                        float depth = barycentric.x * triangle.v1Distance + barycentric.y * triangle.v2Distance + barycentric.z * triangle.v3Distance;
+                        depth =  - depth;
+                        int depthIndex = x + (int)renderResoultion.Value.x * y;
+                        if (depth < depthBuffer[depthIndex] && depthBuffer[depthIndex] != 0)
+                        {
+                            continue;
+                        }
+
+                        if (IsPointInTriangleKernel(pixel, triangle.A, triangle.B, triangle.C))
+                        {
                             bool enoughUVs = triangle.uvIndex3 < uvs.Length;
 
                             Vec2 uv1 = enoughUVs ? uvs[triangle.uvIndex1] : new Vec2(0, 0);
                             Vec2 uv2 = enoughUVs ? uvs[triangle.uvIndex2] : new Vec2(1, 0);
                             Vec2 uv3 = enoughUVs ? uvs[triangle.uvIndex3] : new Vec2(0, 1);
 
-                            // Depth test
-                            float depth = barycentric.x * triangle.v1Distance + barycentric.y * triangle.v2Distance + barycentric.z * triangle.v3Distance;
-
-                            int depthIndex = x + (int)renderResoultion.Value.x * y;
-                            if (depth > depthBuffer[depthIndex])
-                            {
-                                continue;
-                            }
-
-                            depthBuffer[depthIndex] = depth;
-
                             // Interpolate UVs
                             Vec2 uv = InterpolateUVKernel(barycentric, uv1, uv2, uv3);
+
+                            depthBuffer[depthIndex] = depth;
 
                             // Get the color from the texture
 
@@ -472,7 +535,18 @@ namespace ClosedGL
                             frame[frameIndex + 1] = textures[texturePixelIndex + textureOffset + 1];
                             frame[frameIndex + 2] = textures[texturePixelIndex + textureOffset + 2];
                             frame[frameIndex + 3] = textures[texturePixelIndex + textureOffset + 3];
+
+                            didapixel = true;
                         }
+                    }
+                    if (!didapixel)
+                    {
+                        int frameIndex = pixelIndex * bytesPerPixel;
+
+                        //frame[frameIndex + 0] = 0;
+                        //frame[frameIndex + 1] = 255;
+                        //frame[frameIndex + 2] = 0;
+                        //frame[frameIndex + 3] = 255;
                     }
                 }
             }
@@ -607,42 +681,49 @@ namespace ClosedGL
         }
         #endregion
 
-        public bool Render(List<GameObject> gameObjects)
+        public Dictionary<string, object> Render(List<GameObject> gameObjects)
         {
+            Dictionary<string, object> debugValues = new();
+            Stopwatch profilingStopwatch = new();
             if (swapChain.Count > 2)
             {
                 swapChain.TryDequeue(out _);
             }
 
+            profilingStopwatch.Restart();
             PrepareRendering(gameObjects,
-                out List<Vector3> vertices,
+                out List<Vec3> vertices,
                 out List<int> triangles,
-                out List<Vector2> uvs,
+                out List<Vec2> uvs,
                 out List<Texture> texs,
                 out List<int> trianglesPerTexture);
+            profilingStopwatch.Stop();
+            int prepareRenderingTime = (int)profilingStopwatch.ElapsedMilliseconds;
+            debugValues.Add("PrepareRendering", prepareRenderingTime);
 
             if (vertices.Count == 0)
             {
                 swapChain.Enqueue([]);
-                return true;
+                return debugValues;
             }
+            profilingStopwatch.Restart();
 
             UpdatePreBakedVectors();
 
             frameMemory.MemSetToZero();
-            depthBufferMemory.CopyFromCPU(Enumerable.Repeat<float>(float.MaxValue, (int)depthBufferMemory.Length).ToArray());
-            projectedTrianglesMemory.MemSetToZero();
+            //depthBufferMemory.CopyFromCPU(Enumerable.Repeat<float>(float.MaxValue, (int)depthBufferMemory.Length).ToArray());
+            depthBufferMemory.MemSetToZero();
+            vertexBufferMemory.MemSetToZero();
             tileTriangleCounts.MemSetToZero();
-            tileTriangleIndices.MemSetToZero();
 
             var verticesMemory = accelerator.Allocate1D<Vec3>(vertices.Count);
-            verticesMemory.CopyFromCPU(vertices.Select(x => new Vec3(x.X, x.Y, x.Z)).ToArray());
+            verticesMemory.CopyFromCPU([..vertices]);
 
             var trianglesMemory = accelerator.Allocate1D<int>(triangles.Count);
             trianglesMemory.CopyFromCPU([.. triangles]);
 
             var uvsMemory = accelerator.Allocate1D<Vec2>(uvs.Count);
-            uvsMemory.CopyFromCPU(uvs.Select(x => new Vec2(x.X, x.Y)).ToArray());
+            uvsMemory.CopyFromCPU([..uvs]);
 
             var counter = accelerator.Allocate1D<long>(1);
             counter.MemSetToZero();
@@ -651,42 +732,74 @@ namespace ClosedGL
             var viewPointView = preBakedVectorsMemory.View.VariableView(0);
             var renderResolutionView = preBakedVectorsMemory.View.VariableView(1);
 
+            profilingStopwatch.Stop();
+            int setupTime = (int)profilingStopwatch.ElapsedMilliseconds;
+            debugValues.Add("Setup", setupTime);
+
+            profilingStopwatch.Restart();
             projectionKernel(
                 triangles.Count / 3,            /*triangleIndex*/
                 counterView,                    /*projectedVerticesNextIndex*/
                 verticesMemory.View,            /*vertices*/
                 trianglesMemory.View,           /*triangles*/
-                projectedTrianglesMemory.View,  /*vertexBuffer*/
+                vertexBufferMemory.View,  /*vertexBuffer*/
                 viewPointView,                  /*viewPoint*/
                 renderResolutionView            /*renderResolution*/
             );
+            accelerator.DefaultStream.Synchronize();
+            profilingStopwatch.Stop();
+            int projectionKernelTime = (int)profilingStopwatch.ElapsedMilliseconds;
+            debugValues.Add("ProjectionKernel", projectionKernelTime);
+
+            profilingStopwatch.Restart();
 
             int tileCount = (int)RenderResolution.X / TILE_SIZE * (int)RenderResolution.Y / TILE_SIZE;
-            long triangleCount = counterView.Value;
-            int gpuCores = accelerator.MaxNumThreadsPerGroup;
+            debugValues.Add("TileCount", tileCount);
+            long triangleCount = counter.GetAsArray1D()[0];
+            debugValues.Add("TriangleCount", triangleCount);
+            double gpuCores = accelerator.MaxNumThreads;
 
-            int trianglesPerCore = (int)(triangleCount / gpuCores);
+            int trianglesPerCore = (int)XMath.Ceiling(triangleCount / gpuCores);
+
+            // clamp the triangles per core to the actual triangle count
+            trianglesPerCore = XMath.Max(trianglesPerCore, 1);
+
+            gpuCores = (int)Math.Min(gpuCores, triangleCount);
+            debugValues.Add("TrianglesPerCore", trianglesPerCore);
 
             var triangleCountMemory = accelerator.Allocate1D<long>(1);
-            triangleCountMemory.CopyFromCPU([triangleCount]);
+            triangleCountMemory.CopyFromCPU([trianglesPerCore]);
+            //triangleCountMemory.CopyFromCPU([1]);
             var triangleCountView = triangleCountMemory.View.VariableView(0);
 
+            profilingStopwatch.Stop();
+            int binningSetupTime = (int)profilingStopwatch.ElapsedMilliseconds;
+            debugValues.Add("BinningSetup", binningSetupTime);
+
+            profilingStopwatch.Restart();
             triangleBinningKernel(
-                gpuCores,                       /*triangleIndex*/
+                (int)gpuCores,                       /*triangleIndex*/
                 triangleCountView,              /*trianglesPerCore*/
-                projectedTrianglesMemory.View,  /*vertexBuffer*/
+                //(Index1D)triangleCount,                  /*triangleCount*/
+                //triangleCountView,              /*triangleCount*/
+                vertexBufferMemory.View,  /*vertexBuffer*/
                 counterView,                    /*projectedVerticesNextIndex*/
                 tileTriangleIndices.View,       /*tileTriangleIndexBuffer*/
                 tileTriangleCounts.View,        /*tileTriangleCountBuffer*/
                 renderResolutionView            /*renderResolution*/
             );
+            accelerator.DefaultStream.Synchronize();
+            profilingStopwatch.Stop();
+            int binningKernelTime = (int)profilingStopwatch.ElapsedMilliseconds;
+            debugValues.Add("BinningKernel", binningKernelTime);
 
+            profilingStopwatch.Restart();
             tileKernel(
                 tileCount,                      /*index*/
                 frameMemory.View,               /*frame*/
                 depthBufferMemory.View,         /*depthBuffer*/
                 uvsMemory.View,                 /*uvs*/
-                projectedTrianglesMemory.View,  /*vertexBuffer*/
+                vertexBufferMemory.View,  /*vertexBuffer*/
                 tileTriangleIndices.View,       /*tileTriangleIndexBuffer*/
                 tileTriangleCounts.View,        /*tileTriangleCountBuffer*/
                 textureWidthsMemory.View,       /*textureWidths*/
@@ -694,22 +807,43 @@ namespace ClosedGL
                 textureMemory.View,             /*textures*/
                 renderResolutionView             /*renderResolution*/
             );
+            accelerator.DefaultStream.Synchronize();
+            profilingStopwatch.Stop();
+            int tileKernelTime = (int)profilingStopwatch.ElapsedMilliseconds;
+            debugValues.Add("TileKernel", tileKernelTime);
 
+            profilingStopwatch.Restart();
             unsafe
             {
                 int bytesPerPixel = 4;
                 byte[] image = new byte[(int)RenderResolution.X * (int)RenderResolution.Y * bytesPerPixel];
-
-                frameMemory.CopyToCPU(image);
+                fixed (byte* ptr = image)
+                {
+                    frameMemory.CopyToCPU(image);
+                }
 
                 swapChain.Enqueue(image);
             }
+
+            profilingStopwatch.Stop();
+            int copyTime = (int)profilingStopwatch.ElapsedMilliseconds;
+            debugValues.Add("CopyTime", copyTime);
+
+            profilingStopwatch.Restart();
 
             verticesMemory.Dispose();
             trianglesMemory.Dispose();
             uvsMemory.Dispose();
             counter.Dispose();
-            return true;
+            triangleCountMemory.Dispose();
+
+            profilingStopwatch.Stop();
+            int cleanupTime = (int)profilingStopwatch.ElapsedMilliseconds;
+            debugValues.Add("Cleanup", cleanupTime);
+
+            debugValues.Add("TotalKernelTimes", projectionKernelTime + binningKernelTime + tileKernelTime);
+
+            return debugValues;
         }
         const int bytesPerPixel = 4;
 
@@ -730,6 +864,11 @@ namespace ClosedGL
 
             // If none of the conditions are met, then there's an overlap
             return true;
+        }
+
+        public static Vec2 Midpoint(Vec2 a, Vec2 b)
+        {
+            return new Vec2((a.x + b.x) / 2, (a.y + b.y) / 2);
         }
 
         #region kernelmethods
@@ -865,19 +1004,19 @@ namespace ClosedGL
             }
         }
 
-        private void PrepareRendering(List<GameObject> gameObjects, out List<Vector3> vertices, out List<int> triangles, out List<Vector2> uvs, out List<Texture> texs, out List<int> trianglesPerTexture)
+        private void PrepareRendering(List<GameObject> gameObjects, out List<Vec3> vertices, out List<int> triangles, out List<Vec2> uvs, out List<Texture> texs, out List<int> trianglesPerTexture)
         {
             // only take gameobjects in front of the camera
             // check with dot product
-            HashSet<GameObject> gameObjectsToRender = new();
-            foreach (var gameObject in gameObjects.Where(x => x.Mesh != null).OrderBy(x => Vector3.Distance(Position, x.Position)))
-            {
-                var localPosition = TransformToLocal(gameObject.Position);
-                if (localPosition.Z < 0)
-                {
-                    gameObjectsToRender.Add(gameObject);
-                }
-            }
+            HashSet<GameObject> gameObjectsToRender = gameObjects.ToHashSet();
+            //foreach (var gameObject in gameObjects.Where(x => x.Mesh != null)/*.OrderBy(x => Vector3.Distance(Position, x.Position))*/)
+            //{
+            //    var localPosition = TransformToLocal(gameObject.Position);
+            //    if (localPosition.Z < -30)
+            //    {
+            //        gameObjectsToRender.Add(gameObject);
+            //    }
+            //}
 
             vertices = new();
             triangles = new();
@@ -891,12 +1030,12 @@ namespace ClosedGL
                 {
                     Vector3 worldVertexPosition = (vertex * gameObject.Rotation * gameObject.Scale) + gameObject.Position;
                     //var localVertexPosition = TransformToLocal(worldVertexPosition);
-                    var localVertexPositionBeta = TransformToLocal(worldVertexPosition);
+                    var localVertexPositionBeta = TransformToLocalBeta(worldVertexPosition);
                     vertices.Add(localVertexPositionBeta);
                 }
                 foreach (var uv in gameObject.Mesh.UVs)
                 {
-                    uvs.Add(uv);
+                    uvs.Add(new Vec2(uv.X, uv.Y));
                 }
                 foreach (var triangle in gameObject.Mesh.Triangles)
                 {
@@ -968,9 +1107,9 @@ namespace ClosedGL
 
     public struct Triangle
     {
-        public Vec2 v1;
-        public Vec2 v2;
-        public Vec2 v3;
+        public Vec2 A;
+        public Vec2 B;
+        public Vec2 C;
 
         public float v1Distance;
         public float v2Distance;
@@ -984,9 +1123,9 @@ namespace ClosedGL
 
         public Triangle(Vec3 v1, Vec3 v2, Vec3 v3, int textureIndex, int uvIndex1, int uvIndex2, int uvIndex3)
         {
-            this.v1 = new Vec2(v1.x, v1.y);
-            this.v2 = new Vec2(v2.x, v2.y);
-            this.v3 = new Vec2(v3.x, v3.y);
+            this.A = new Vec2(v1.x, v1.y);
+            this.B = new Vec2(v2.x, v2.y);
+            this.C = new Vec2(v3.x, v3.y);
             this.v1Distance = v1.z;
             this.v2Distance = v2.z;
             this.v3Distance = v3.z;
@@ -994,6 +1133,71 @@ namespace ClosedGL
             this.uvIndex1 = uvIndex1;
             this.uvIndex2 = uvIndex2;
             this.uvIndex3 = uvIndex3;
+        }
+
+        public Triangle(Vec2 v1, Vec2 v2, Vec2 v3, int textureIndex, int uvIndex1, int uvIndex2, int uvIndex3, float distance1, float distance2, float distance3)
+        {
+            this.A = v1;
+            this.B = v2;
+            this.C = v3;
+            this.v1Distance = distance1;
+            this.v2Distance = distance2;
+            this.v3Distance = distance3;
+            this.textureIndex = textureIndex;
+            this.uvIndex1 = uvIndex1;
+            this.uvIndex2 = uvIndex2;
+            this.uvIndex3 = uvIndex3;
+        }
+
+        // Splits the triangle into four smaller triangles
+        public Triangle[] Split()
+        {
+            Vec2 D = CameraGPUFragmentedTiled.Midpoint(A, B);
+            Vec2 E = CameraGPUFragmentedTiled.Midpoint(B, C);
+            Vec2 F = CameraGPUFragmentedTiled.Midpoint(C, A);
+
+            return [
+            new Triangle(A, D, F, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
+            new Triangle(D, B, E, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
+            new Triangle(F, E, C, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
+            new Triangle(D, E, F, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance)
+            ];
+        }
+
+        // Splits the triangle into four smaller triangles
+        public Triangle[] Split(TriangleSplitAmount parts)
+        {
+            Vec2 D = CameraGPUFragmentedTiled.Midpoint(A, B);
+            Vec2 E = CameraGPUFragmentedTiled.Midpoint(B, C);
+            Vec2 F = CameraGPUFragmentedTiled.Midpoint(C, A);
+
+            if (parts == TriangleSplitAmount.Eight)
+            {
+                Vec2 G = CameraGPUFragmentedTiled.Midpoint(D, E);
+
+                return [
+                new Triangle(A, D, F, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
+                    new Triangle(D, G, F, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
+                    new Triangle(G, E, F, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
+                    new Triangle(D, B, G, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
+                    new Triangle(G, B, E, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
+                    new Triangle(F, E, C, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
+                    new Triangle(G, E, C, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance)
+                ];
+            }
+
+            return [
+                new Triangle(A, D, F, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
+                new Triangle(D, B, E, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
+                new Triangle(F, E, C, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
+                new Triangle(D, E, F, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance)
+            ];
+        }
+
+        public enum TriangleSplitAmount
+        {
+            Four,
+            Eight
         }
     }
 }

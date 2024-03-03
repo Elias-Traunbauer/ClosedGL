@@ -383,7 +383,7 @@ namespace ClosedGL
         }
         #endregion
 
-        public bool Render(List<GameObject> gameObjects)
+        public Dictionary<string, object> Render(List<GameObject> gameObjects)
         {
             if (swapChain.Count > 2)
             {
@@ -400,7 +400,7 @@ namespace ClosedGL
             if (vertices.Count == 0)
             {
                 swapChain.Enqueue([]);
-                return true;
+                return new();
             }
 
             UpdatePreBakedVectors();
@@ -476,7 +476,7 @@ namespace ClosedGL
             trianglesMemory.Dispose();
             uvsMemory.Dispose();
             counter.Dispose();
-            return true;
+            return [];
         }
         const int bytesPerPixel = 4;
 

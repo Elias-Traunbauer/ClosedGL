@@ -3,6 +3,7 @@ using ClosedGL.InputSystem;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Windows.Forms;
+using TraunisExtensions;
 using VRageMath;
 
 namespace RenderTest
@@ -46,6 +47,8 @@ namespace RenderTest
         int unrenderedFrames = 0;
         Semaphore renderSemaphore = new(1, 1);
         Semaphore criticalState = new(1, 1);
+
+        Dictionary<string, object> debugValues = new Dictionary<string, object>();
 
         private void Form1_Load(object sender, EventArgs e)
         {
@@ -238,17 +241,29 @@ namespace RenderTest
                     //var res = camera.Render([go, cub, cub1, .. gameObjects/*, cubi,..   /*house*/]);
                     //var res = camera.Render(new List<GameObject>() { go, cub, cub1, }.Concat(gameObjects).ToList());
                     //var res = camera.Render([go, cub, cub1, .. gameObjects]);
-                    
-                    var res = camera.Render([house]);
+                    var volvo2 = new GameObject()
+                    {
+                        Mesh = volvo.Mesh,
+                        Texture = volvo.Texture,
+                        Position = volvo.Position + Vector3.Right * 20,
+                        Rotation = volvo.Rotation,
+                        Scale = volvo.Scale
+                    };
+                    var res = camera.Render([house, volvo, volvo2]);
                     renderStopwatch.Stop();
+
+                    foreach (var item in res.Keys.Reverse())
+                    {
+                        debugValues.Remove(item);
+                    }
+                    foreach (var item in res)
+                    {
+                        debugValues[item.Key] = item.Value;
+                    }
                     lastFrametimes.Enqueue((int)renderStopwatch.ElapsedMilliseconds);
-                    if (lastFrametimes.Count > 20)
+                    if (lastFrametimes.Count > 10)
                     {
                         lastFrametimes.TryDequeue(out _);
-                    }
-                    if (res)
-                    {
-                        renderCalls++;
                     }
                     //Render(new List<GameObject>() { go, cub, cub1, cubi }.Concat(gameObjects).ToList(), camera, ("FieldOfView", camera.FieldOfView), ("x", x), ("deltaTime", deltaTime), ("camPos", camera.Position), ("res", camera.RenderResolution));
                 }
@@ -327,6 +342,11 @@ namespace RenderTest
             foreach (var value in values)
             {
                 g.DrawString(value.Item1 + ": " + value.Item2.ToString(), new Font("Arial", 12), Brushes.White, 0, y);
+                y += 20;
+            }
+            foreach (var item in debugValues)
+            {
+                g.DrawString(item.Key + ": " + item.Value.ToString(), new Font("Arial", 12), Brushes.White, 0, y);
                 y += 20;
             }
         }
