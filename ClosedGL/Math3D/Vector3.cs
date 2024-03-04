@@ -1,6 +1,7 @@
 ﻿// Disabled, some people have issues with this, but latest redist installed and SharpDX works
 //#define NATIVE_SUPPORT
 
+using ClosedGL;
 using System;
 using System.Diagnostics;
 using System.Globalization;

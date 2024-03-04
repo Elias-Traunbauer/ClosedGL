@@ -779,6 +779,11 @@ namespace ClosedGL
             return new Vec3(v1.x * v, v1.y * v, v1.z * v);
         }
 
+        public static Vec3 operator *(Vec3 v1, double v)
+        {
+            return new Vec3((float)(v1.x * v), (float)(v1.y * v), (float)(v1.z * v));
+        }
+
         public float length()
         {
             return XMath.Sqrt(x * x + y * y + z * z);
@@ -806,6 +811,100 @@ namespace ClosedGL
             x /= l;
             y /= l;
             z /= l;
+        }
+
+        public static Vec3 operator /(Vec3 v1, double v)
+        {
+            return new Vec3((float)(v1.x / v), (float)(v1.y / v), (float)(v1.z / v));
+        }
+
+        public static Vec3 operator *(Vec3 vector, Quaternion quaternion)
+        {
+            var rotationMatrix = MatrixK.CreateFromQuaternion(quaternion);
+            return Vec3.Rotate(vector, rotationMatrix);
+        }
+
+        public static Vec3 operator *(Vec3 vector, Vec3 rhs)
+        {
+            return new Vec3(vector.x * rhs.x, vector.y * rhs.y, vector.z * rhs.z);
+        }
+
+        private static Vec3 Rotate(Vec3 vector, MatrixK rotationMatrix)
+        {
+            return new Vec3(
+                               vector.x * rotationMatrix.M11 + vector.y * rotationMatrix.M21 + vector.z * rotationMatrix.M31,
+                                              vector.x * rotationMatrix.M12 + vector.y * rotationMatrix.M22 + vector.z * rotationMatrix.M32,
+                                                             vector.x * rotationMatrix.M13 + vector.y * rotationMatrix.M23 + vector.z * rotationMatrix.M33);
+        }
+
+        internal static Vec3 TransformNormal(Vec3 worldDirectionNormalized, MatrixK matrix)
+        {
+            return new Vec3(
+                                              worldDirectionNormalized.x * matrix.M11 + worldDirectionNormalized.y * matrix.M21 + worldDirectionNormalized.z * matrix.M31,
+                                                                                           worldDirectionNormalized.x * matrix.M12 + worldDirectionNormalized.y * matrix.M22 + worldDirectionNormalized.z * matrix.M32,
+                                                                                                                                                       worldDirectionNormalized.x * matrix.M13 + worldDirectionNormalized.y * matrix.M23 + worldDirectionNormalized.z * matrix.M33);
+        }
+    }
+
+    public struct MatrixK
+    {
+        public float M11, M12, M13, M14;
+        public float M21, M22, M23, M24;
+        public float M31, M32, M33, M34;
+        public float M41, M42, M43, M44;
+
+        internal static MatrixK CreateFromQuaternion(Quaternion quaternion)
+        {
+            float num = quaternion.X * quaternion.X;
+            float num2 = quaternion.Y * quaternion.Y;
+            float num3 = quaternion.Z * quaternion.Z;
+            float num4 = quaternion.X * quaternion.Y;
+            float num5 = quaternion.Z * quaternion.W;
+            float num6 = quaternion.Z * quaternion.X;
+            float num7 = quaternion.Y * quaternion.W;
+            float num8 = quaternion.Y * quaternion.Z;
+            float num9 = quaternion.X * quaternion.W;
+            MatrixK result = default;
+            result.M11 = 1f - 2f * (num2 + num3);
+            result.M12 = 2f * (num4 + num5);
+            result.M13 = 2f * (num6 - num7);
+            result.M14 = 0f;
+            result.M21 = 2f * (num4 - num5);
+            result.M22 = 1f - 2f * (num3 + num);
+            result.M23 = 2f * (num8 + num9);
+            result.M24 = 0f;
+            result.M31 = 2f * (num6 + num7);
+            result.M32 = 2f * (num8 - num9);
+            result.M33 = 1f - 2f * (num2 + num);
+            result.M34 = 0f;
+            result.M41 = 0f;
+            result.M42 = 0f;
+            result.M43 = 0f;
+            result.M44 = 1f;
+            return result;
+        }
+
+        internal static MatrixK Transpose(MatrixK worldMatrix)
+        {
+            return new MatrixK
+            {
+                M11 = worldMatrix.M11,
+                M12 = worldMatrix.M21,
+                M13 = worldMatrix.M31,
+                M14 = worldMatrix.M41,
+                M21 = worldMatrix.M12,
+                M22 = worldMatrix.M22,
+                M23 = worldMatrix.M32,
+                M24 = worldMatrix.M42,
+                M31 = worldMatrix.M13,
+                M32 = worldMatrix.M23,
+                M33 = worldMatrix.M33,
+                M34 = worldMatrix.M43,
+                M41 = worldMatrix.M14,
+                M42 = worldMatrix.M24,
+                M43 = worldMatrix.M34,
+                M44 = worldMatrix.M44
+            };
         }
     }
 
