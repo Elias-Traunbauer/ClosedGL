@@ -113,7 +113,7 @@ namespace ClosedGL
                                                                                                                                                            VariableView<Vec3> /*cameraPosition*/,
                                                                                                                                                                       VariableView<MatrixK> /*worldMatrix*/
                        > preProcessorKernel;
-
+        
         // projection kernel
         private Action<
             Index1D /*triangleIndex*/,
