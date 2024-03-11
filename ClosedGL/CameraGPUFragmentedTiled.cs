@@ -354,8 +354,6 @@ namespace ClosedGL
             resultUVs[verticesIndex + 0] = uvSourceBuffer[triangleSourceBuffer[verticesStartIndex + 0]];
             resultUVs[verticesIndex + 1] = uvSourceBuffer[triangleSourceBuffer[verticesStartIndex + 1]];
             resultUVs[verticesIndex + 2] = uvSourceBuffer[triangleSourceBuffer[verticesStartIndex + 2]];
-
-            resultVerticesIndex.Value += 3;
         }
 
         public static Vec3 TransformToLocalKernel(Vec3 worldVector, Vec3 cameraPosition, MatrixK worldMatrix)
