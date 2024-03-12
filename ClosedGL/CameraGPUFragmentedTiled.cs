@@ -1,10 +1,12 @@
-﻿using ILGPU;
+﻿using ClosedGL.InputSystem;
+using ILGPU;
 using ILGPU.Algorithms;
 using ILGPU.Runtime;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Drawing;
 using System.Runtime.InteropServices;
+using System.Windows.Forms;
 using VRageMath;
 
 namespace ClosedGL
@@ -167,10 +169,70 @@ namespace ClosedGL
         #region constructor/deconstructor
         public CameraGPUFragmentedTiled()
         {
-            bool debug = false;
+            bool includeCPU = true;
+            bool debug = false; 
+            
             context = Context.CreateDefault();
-            device = context.Devices.First(x => debug ? x.AcceleratorType == AcceleratorType.CPU : x.AcceleratorType == AcceleratorType.Cuda);
-            accelerator = device.CreateAccelerator(context);
+            if (debug)
+            {
+                device = context.Devices.First(x => x.AcceleratorType == AcceleratorType.CPU);
+            }
+            else
+            {
+                var allGpus = context.Devices.Where(x => x.AcceleratorType == AcceleratorType.Cuda || x.AcceleratorType == AcceleratorType.OpenCL || includeCPU);
+                if (allGpus.Count() > 0)
+                {
+                    System.Windows.Forms.Form form = new System.Windows.Forms.Form();
+                    form.Text = "Select GPU";
+                    form.Size = new System.Drawing.Size(200, 200);
+                    form.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
+                    form.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
+                    form.MaximizeBox = false;
+                    form.MinimizeBox = false;
+                    form.ControlBox = false;
+                    form.ShowInTaskbar = false;
+                    form.TopMost = true;
+                    form.Visible = false;
+                    Cursor.Show();
+                    int index = 0;
+                    System.Windows.Forms.ListBox listBox = new System.Windows.Forms.ListBox();
+                    listBox.Dock = System.Windows.Forms.DockStyle.Fill;
+                    listBox.SelectedIndexChanged += (sender, e) =>
+                    {
+                        index = listBox.SelectedIndex;
+                        form.Close();
+                    };
+                    listBox.KeyDown += (sender, e) =>
+                    {
+                        if (e.KeyCode == Keys.Enter)
+                        {
+                            form.Close();
+                        }
+                        e.Handled = true;
+                    };
+                    form.Controls.Add(listBox);
+
+                    foreach (var gpu in allGpus)
+                    {
+                        listBox.Items.Add(gpu.Name);
+                    }
+
+                    form.ShowDialog();
+                    Cursor.Hide();
+                    if (index == -1)
+                    {
+                        Environment.Exit(0);
+                        return;
+                    }
+                    device = allGpus.ElementAt(index);
+                }
+                else
+                {
+                    device = allGpus.First();
+                }
+            }
+            //MessageBox.Show(device.Name);
+            accelerator = device!.CreateAccelerator(context);
         }
 
         ~CameraGPUFragmentedTiled()
@@ -853,9 +915,9 @@ namespace ClosedGL
             var gameObjectScalesMemory = accelerator.Allocate1D<Vec3>(gameObjectScales.Length);
             gameObjectScalesMemory.CopyFromCPU(gameObjectScales);
 
-            var svertexBufferMemory = accelerator.Allocate1D<Vec3>(verticesSource.Length);
+            var svertexBufferMemory = accelerator.Allocate1D<Vec3>(trianglesSource.Length);
             var trianglesMemory = accelerator.Allocate1D<int>(trianglesSource.Length);
-            var uvsMemory = accelerator.Allocate1D<Vec2>(verticesSource.Length);
+            var uvsMemory = accelerator.Allocate1D<Vec2>(trianglesSource.Length);
 
             var vertexCounter = accelerator.Allocate1D<long>(1);
             vertexCounter.MemSetToZero();
@@ -867,10 +929,11 @@ namespace ClosedGL
 
             var cameraMatrixMemory = accelerator.Allocate1D<MatrixK>(1);
             cameraMatrixMemory.MemSetToZero();
+            cameraMatrixMemory.CopyFromCPU([this.WorldMatrixK]);
             var worldMatrix = cameraMatrixMemory.View.VariableView(0);
 
             preProcessorKernel(
-                               (Index1D)trianglesSource.Length, /*triangleIndex*/
+                               (Index1D)trianglesSource.Length / 3, /*triangleIndex*/
                                 svertexBufferMemory.View, /*resultVertices*/
                                 trianglesMemory.View, /*resultTriangles*/
                                 uvsMemory.View, /*resultUVs*/
@@ -1032,6 +1095,68 @@ namespace ClosedGL
             debugValues.Add("Cleanup", cleanupTime);
 
             debugValues.Add("TotalKernelTimes", projectionKernelTime + binningKernelTime + tileKernelTime);
+            debugValues.Add("TotalTime", prepareRenderingTime + setupTime + projectionKernelTime + binningSetupTime + binningKernelTime + tileKernelTime + copyTime + cleanupTime);
+
+            string[] sizes = ["b", "kb", "mb", "gb"];
+
+            string FormatBytes(long bytes)
+            {
+                int order = 0;
+                while (bytes >= 1024 && order < sizes.Length - 1)
+                {
+                    order++;
+                    bytes = bytes / 1024;
+                }
+
+                return $"{bytes:0.##} {sizes[order]}";
+            }
+
+            long memoryUsage = 0;
+            memoryUsage += svertexBufferMemory.Length * sizeof(float) * 3;
+            memoryUsage += trianglesMemory.Length * sizeof(int);
+            memoryUsage += uvsMemory.Length * sizeof(float) * 2;
+            memoryUsage += counter.Length * sizeof(long);
+            memoryUsage += triangleCountMemory.Length * sizeof(long);
+            memoryUsage += gameObjectPositionsMemory.Length * sizeof(float) * 3;
+            memoryUsage += gameObjectRotationsMemory.Length * sizeof(float) * 4;
+            memoryUsage += gameObjectScalesMemory.Length * sizeof(float) * 3;
+            memoryUsage += cameraPositionMemory.Length * sizeof(float) * 3;
+            memoryUsage += cameraMatrixMemory.Length * sizeof(float) * 16;
+            memoryUsage += verticesSourceMemory.Length * sizeof(float) * 3;
+            memoryUsage += trianglesSourceMemory.Length * sizeof(int);
+            memoryUsage += uvsSourceMemory.Length * sizeof(float) * 2;
+            memoryUsage += trianglesPerGameObjectMemory.Length * sizeof(int);
+
+            debugValues.Add("memoryUsage", FormatBytes(memoryUsage));
+
+            long constantMemoryUsage = 0;
+            //MemoryBuffer1D<byte, Stride1D.Dense> textureMemory;
+            //MemoryBuffer1D<byte, Stride1D.Dense> frameMemory;
+            //MemoryBuffer1D<float, Stride1D.Dense> depthBufferMemory;
+            //MemoryBuffer1D<Vec3, Stride1D.Dense> preBakedVectorsMemory;
+            //MemoryBuffer1D<int, Stride1D.Dense> textureLengthsMemory;
+            //MemoryBuffer1D<int, Stride1D.Dense> textureWidthsMemory;
+            //MemoryBuffer1D<int, Stride1D.Dense> textureHeightsMemory;
+            //MemoryBuffer1D<int, Stride1D.Dense> trianglesPerTextureMemory;
+            //MemoryBuffer1D<Triangle, Stride1D.Dense> vertexBufferMemory;
+            //MemoryBuffer1D<int, Stride1D.Dense> uvIndicesMemory;
+            //MemoryBuffer1D<int, Stride1D.Dense> tileTriangleIndices;
+            //MemoryBuffer1D<int, Stride1D.Dense> tileTriangleCounts;
+            constantMemoryUsage += textureMemory.Length * sizeof(byte);
+            constantMemoryUsage += frameMemory.Length * sizeof(byte);
+            constantMemoryUsage += depthBufferMemory.Length * sizeof(float);
+            constantMemoryUsage += preBakedVectorsMemory.Length * sizeof(float) * 3;
+            constantMemoryUsage += textureLengthsMemory.Length * sizeof(int);
+            constantMemoryUsage += textureWidthsMemory.Length * sizeof(int);
+            constantMemoryUsage += textureHeightsMemory.Length * sizeof(int);
+            constantMemoryUsage += trianglesPerTextureMemory.Length * sizeof(int);
+            constantMemoryUsage += vertexBufferMemory.Length * sizeof(float) * 2 * 3 + sizeof(int) * 4 + sizeof(float) * 3;
+            constantMemoryUsage += uvIndicesMemory.Length * sizeof(int);
+            constantMemoryUsage += tileTriangleIndices.Length * sizeof(int);
+            constantMemoryUsage += tileTriangleCounts.Length * sizeof(int);
+            debugValues.Add("constantMemoryUsage", FormatBytes(constantMemoryUsage));
+
+            debugValues.Add("TotalMemoryUsage", FormatBytes(memoryUsage + constantMemoryUsage));
 
             return debugValues;
         }

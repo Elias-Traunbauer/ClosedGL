@@ -36,6 +36,21 @@ namespace ClosedGL
             }
         }
 
+        public MatrixK WorldMatrixK
+        {
+            get
+            {
+                var rotationMatrix = Matrix.CreateFromQuaternion(Rotation);
+                var worldMatrix = Matrix.CreateWorld(Position, rotationMatrix.Forward, rotationMatrix.Up);
+                return new MatrixK(
+                    worldMatrix.M11, worldMatrix.M12, worldMatrix.M13, worldMatrix.M14,
+                    worldMatrix.M21, worldMatrix.M22, worldMatrix.M23, worldMatrix.M24,
+                    worldMatrix.M31, worldMatrix.M32, worldMatrix.M33, worldMatrix.M34,
+                    worldMatrix.M41, worldMatrix.M42, worldMatrix.M43, worldMatrix.M44
+                    );
+            }
+        }
+
         public Vector3 TransformToWorld(Vector3 localVector)
         {
             // Use the world matrix to transform the local vector to world space
