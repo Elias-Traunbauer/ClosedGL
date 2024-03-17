@@ -64,6 +64,13 @@ namespace ClosedGL.InputSystem
 
         private void KeyDown(object? sender, KeyEventArgs e)
         {
+            if (e.KeyCode == Keys.F2)
+            {
+                m_GlobalHook.Dispose();
+                keysDown.Clear();
+                return;
+            }
+
             keysDown.Add(e.KeyCode);
         }
 

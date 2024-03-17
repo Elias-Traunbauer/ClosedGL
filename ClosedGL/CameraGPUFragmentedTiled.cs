@@ -13,14 +13,13 @@ namespace ClosedGL
 {
     /// <summary>
     /// Class to project points from a position onto an lcd
-    /// NOTE: Only works if the ViewPoint is infront of the lcd -> Transparent LCDS from the back dont work
     /// </summary>
     public class CameraGPUFragmentedTiled : GameObject, IRenderer
     {
         const int TILE_SIZE = 3;
         const int TILE_SIZE_SQUARED = TILE_SIZE * TILE_SIZE;
-        const int TRIANGLE_SIZE_SPLIT_THRESHOLD = 7000;
-        const int TRIANGLE_SIZE_SPLIT_4_THRESHOLD = 25000;
+        const int TRIANGLE_SIZE_SPLIT_THRESHOLD = TILE_SIZE_SQUARED * 2000;
+        const int TRIANGLE_SIZE_SPLIT_4_THRESHOLD = TILE_SIZE_SQUARED * 7000;
         const int TRIANGLE_BUFFER_PER_TILE = 500;
 
         #region boring
@@ -111,7 +110,7 @@ namespace ClosedGL
                                                                                                                ArrayView<Quaternion> /*gameObjectRotations*/,
                                                                                                                           ArrayView<Vec3> /*gameObjectPositions*/,
                                                                                                                                      ArrayView<Vec3> /*gameObjectScales*/,
-                                                                                                                                                VariableView<long> /*resultVerticesIndex*/,
+                                                                                                                                                VariableView<int> /*resultVerticesIndex*/,
                                                                                                                                                            VariableView<Vec3> /*cameraPosition*/,
                                                                                                                                                                       VariableView<MatrixK> /*worldMatrix*/
                        > preProcessorKernel;
@@ -119,7 +118,7 @@ namespace ClosedGL
         // projection kernel
         private Action<
             Index1D /*triangleIndex*/,
-            VariableView<long> /*projectedVerticesNextIndex*/,
+            VariableView<int> /*projectedVerticesNextIndex*/,
             ArrayView<Vec3> /*vertices*/,
             ArrayView<int> /*triangles*/,
             ArrayView<Triangle> /*vertexBuffer*/,
@@ -130,9 +129,9 @@ namespace ClosedGL
         // triangle bin kernel
         private Action<
             Index1D /*triangleIndex*/,
-            VariableView<long> /*triangleCount*/,
+            VariableView<int> /*triangleCount*/,
             ArrayView<Triangle> /*vertexBuffer*/,
-            VariableView<long> /*projectedVerticesNextIndex*/, /* effectively the vertex count */
+            VariableView<int> /*projectedVerticesNextIndex*/, /* effectively the vertex count */
             ArrayView<int> /*tileTriangleIndexBuffer*/,
             ArrayView<int> /*tileTriangleCountBuffer*/,
             VariableView<Vec3> /*renderResoultion*/> triangleBinningKernel;
@@ -281,14 +280,14 @@ namespace ClosedGL
                 ArrayView<Quaternion>, /*gameObjectRotations*/
                 ArrayView<Vec3>, /*gameObjectPositions*/
                 ArrayView<Vec3>, /*gameObjectScales*/
-                VariableView<long>, /*resultVerticesIndex*/
+                VariableView<int>, /*resultVerticesIndex*/
                 VariableView<Vec3>, /*cameraPosition*/
                 VariableView<MatrixK> /*worldMatrix*/
                 >(PreProcessorKernel);
 
             projectionKernel = accelerator.LoadAutoGroupedStreamKernel<
                 Index1D /*triangleIndex*/,
-                VariableView<long> /*projectedVerticesNextIndex*/,
+                VariableView<int> /*projectedVerticesNextIndex*/,
                 ArrayView<Vec3> /*vertices*/,
                 ArrayView<int> /*triangles*/,
                 ArrayView<Triangle> /*vertexBuffer*/,
@@ -297,9 +296,9 @@ namespace ClosedGL
 
             triangleBinningKernel = accelerator.LoadAutoGroupedStreamKernel<
                 Index1D /*triangleIndex*/,
-                VariableView<long> /*triangleCount*/,
+                VariableView<int> /*triangleCount*/,
                 ArrayView<Triangle> /*vertexBuffer*/,
-                VariableView<long> /*projectedVerticesNextIndex*/, /* effectively the vertex count */
+                VariableView<int> /*projectedVerticesNextIndex*/, /* effectively the vertex count */
                 ArrayView<int> /*tileTriangleIndexBuffer*/,
                 ArrayView<int> /*tileTriangleCountBuffer*/,
                 VariableView<Vec3> /*renderResoultion*/>(BinningKernel);
@@ -361,7 +360,7 @@ namespace ClosedGL
             ArrayView<Quaternion> gameObjectRotations,
             ArrayView<Vec3> gameObjectPositions,
             ArrayView<Vec3> gameObjectScales,
-            VariableView<long> resultVerticesIndex,
+            VariableView<int> resultVerticesIndex,
             VariableView<Vec3> cameraPosition,
             VariableView<MatrixK> worldMatrix
             )
@@ -385,7 +384,7 @@ namespace ClosedGL
             Quaternion rotation = gameObjectRotations[gameObjectIndex];
             Vec3 scale = gameObjectScales[gameObjectIndex];
 
-            long verticesIndex = Atomic.Add(ref resultVerticesIndex.Value, 3);
+            int verticesIndex = Atomic.Add(ref resultVerticesIndex.Value, 3);
 
             int verticesStartIndex = triangleIndex * 3;
 
@@ -446,7 +445,7 @@ namespace ClosedGL
         /// </summary>
         public static void ProjectionKernel(
             Index1D triangleIndex,
-            VariableView<long> projectedVerticesNextIndex,
+            VariableView<int> projectedVerticesNextIndex,
             ArrayView<Vec3> vertices,
             ArrayView<int> triangles,
             ArrayView<Triangle> vertexBuffer,
@@ -481,7 +480,7 @@ namespace ClosedGL
                     return;
                 }
 
-                if (projectedVerticesNextIndex.Value >= 10_000_000)
+                if (projectedVerticesNextIndex.Value >= 9_999_999)
                 {
                     return;
                 }
@@ -542,7 +541,7 @@ namespace ClosedGL
 
                 for (int t = 0; t < finalResultsLength; t++)
                 {
-                    long projectedVerticesIndex = Atomic.Add(ref projectedVerticesNextIndex.Value, 1);
+                    int projectedVerticesIndex = Atomic.Add(ref projectedVerticesNextIndex.Value, 1);
 
                     vertexBuffer[projectedVerticesIndex] = finalResultsBuffer[t];
                 }
@@ -550,25 +549,25 @@ namespace ClosedGL
         }
 
         /// <summary>
-        /// Executed for each triangle to determine which tiles it belongs to
+        /// Executed for each triangle to determine which tiles it beints to
         /// </summary>
         public static void BinningKernel(
             Index1D triangleIndex,
-            VariableView<long> triangleCount,
+            VariableView<int> triangleCount,
             ArrayView<Triangle> vertexBuffer,
-            VariableView<long> projectedVerticesNextIndex, /* effectively the vertex count */
+            VariableView<int> projectedVerticesNextIndex, /* effectively the vertex count */
             ArrayView<int> tileTriangleIndexBuffer,
             ArrayView<int> tileTriangleCountBuffer,
             VariableView<Vec3> renderResoultion
             )
         {
-            long projectedVerticesCount = projectedVerticesNextIndex.Value;
+            int projectedVerticesCount = projectedVerticesNextIndex.Value;
 
-            long trianglesToProcess = triangleCount.Value;
+            int trianglesToProcess = triangleCount.Value;
 
-            long triangleStartIndex = triangleIndex * trianglesToProcess;
+            int triangleStartIndex = triangleIndex * trianglesToProcess;
 
-            for (long i = triangleStartIndex; i < triangleStartIndex + trianglesToProcess; i++)
+            for (int i = triangleStartIndex; i < triangleStartIndex + trianglesToProcess; i++)
             {
                 Triangle triangle = vertexBuffer[i];
 
@@ -581,7 +580,7 @@ namespace ClosedGL
                 min = Vec2.Max(min, new Vec2(0, 0));
                 max = Vec2.Min(max, res);
 
-                // find out which tiles the triangle belongs to
+                // find out which tiles the triangle beints to
                 // we do it smart, by findint the nearest tile to the min and max point of the triangle
 
                 int tilesPerRow = (int)res.x / TILE_SIZE;
@@ -919,12 +918,13 @@ namespace ClosedGL
             var trianglesMemory = accelerator.Allocate1D<int>(trianglesSource.Length);
             var uvsMemory = accelerator.Allocate1D<Vec2>(trianglesSource.Length);
 
-            var vertexCounter = accelerator.Allocate1D<long>(1);
+            var vertexCounter = accelerator.Allocate1D<int>(1);
             vertexCounter.MemSetToZero();
             var vertexCounterView = vertexCounter.View.VariableView(0);
 
             var cameraPositionMemory = accelerator.Allocate1D<Vec3>(1);
             cameraPositionMemory.MemSetToZero();
+            cameraPositionMemory.CopyFromCPU([new Vec3(this.Position.X, this.Position.Y, this.Position.Z)]);
             var cameraPosition = cameraPositionMemory.View.VariableView(0);
 
             var cameraMatrixMemory = accelerator.Allocate1D<MatrixK>(1);
@@ -948,12 +948,12 @@ namespace ClosedGL
                                 cameraPosition, /*cameraPosition*/
                                 worldMatrix /*worldMatrix*/
                            );
-
+            accelerator.DefaultStream.Synchronize();
             profilingStopwatch.Stop();
             int prepareRenderingTime = (int)profilingStopwatch.ElapsedMilliseconds;
             debugValues.Add("PrepareRendering", prepareRenderingTime);
 
-            long[] vertexCounterArray = new long[1];
+            int[] vertexCounterArray = new int[1];
             vertexCounter.CopyToCPU(vertexCounterArray);
             if (vertexCounterArray[0] == 0)
             {
@@ -971,9 +971,9 @@ namespace ClosedGL
             vertexBufferMemory.MemSetToZero();
             tileTriangleCounts.MemSetToZero();
 
-            var counter = accelerator.Allocate1D<long>(1);
-            counter.MemSetToZero();
-            var counterView = counter.View.VariableView(0);
+            var projectedVerticesNextIndexBuffer = accelerator.Allocate1D<int>(1);
+            projectedVerticesNextIndexBuffer.MemSetToZero();
+            var projectedVerticesCounterView = projectedVerticesNextIndexBuffer.View.VariableView(0);
 
             var viewPointView = preBakedVectorsMemory.View.VariableView(0);
             var renderResolutionView = preBakedVectorsMemory.View.VariableView(1);
@@ -984,15 +984,15 @@ namespace ClosedGL
 
             profilingStopwatch.Restart();
             projectionKernel(
-                (int)vertexCounterView.Value / 3,            /*triangleIndex*/
-                counterView,                    /*projectedVerticesNextIndex*/
+                vertexCounter.GetAsArray1D()[0] / 3,            /*triangleIndex*/
+                projectedVerticesCounterView,                    /*projectedVerticesNextIndex*/
                 svertexBufferMemory.View,            /*vertices*/
                 trianglesMemory.View,           /*triangles*/
                 vertexBufferMemory.View,  /*vertexBuffer*/
                 viewPointView,                  /*viewPoint*/
                 renderResolutionView            /*renderResolution*/
             );
-            //accelerator.DefaultStream.Synchronize();
+            accelerator.DefaultStream.Synchronize();
             profilingStopwatch.Stop();
             int projectionKernelTime = (int)profilingStopwatch.ElapsedMilliseconds;
             debugValues.Add("ProjectionKernel", projectionKernelTime);
@@ -1001,15 +1001,16 @@ namespace ClosedGL
 
             int tileCount = (int)RenderResolution.X / TILE_SIZE * (int)RenderResolution.Y / TILE_SIZE;
             debugValues.Add("TileCount", tileCount);
-            long triangleCount = counter.GetAsArray1D()[0];
+            int triangleCount = projectedVerticesNextIndexBuffer.GetAsArray1D()[0];
             debugValues.Add("TriangleCount", triangleCount);
             if (triangleCount == 0)
             {
-                swapChain.Enqueue([]);
-                Thread.Sleep(1);
+                swapChain.Enqueue(new byte[RenderResolution.X * RenderResolution.Y * bytesPerPixel]);
+                Thread.Sleep(5);
                 return debugValues;
             }
-            double gpuCores = accelerator.MaxNumThreads;
+            //double gpuCores = accelerator.MaxNumThreads;
+            double gpuCores = triangleCount;
 
             int trianglesPerCore = (int)XMath.Ceiling(triangleCount / gpuCores);
 
@@ -1019,7 +1020,7 @@ namespace ClosedGL
             gpuCores = (int)Math.Min(gpuCores, triangleCount);
             debugValues.Add("TrianglesPerCore", trianglesPerCore);
 
-            var triangleCountMemory = accelerator.Allocate1D<long>(1);
+            var triangleCountMemory = accelerator.Allocate1D<int>(1);
             triangleCountMemory.CopyFromCPU([trianglesPerCore]);
             //triangleCountMemory.CopyFromCPU([1]);
             var triangleCountView = triangleCountMemory.View.VariableView(0);
@@ -1036,12 +1037,12 @@ namespace ClosedGL
                 //(Index1D)triangleCount,                  /*triangleCount*/
                 //triangleCountView,              /*triangleCount*/
                 vertexBufferMemory.View,  /*vertexBuffer*/
-                counterView,                    /*projectedVerticesNextIndex*/
+                projectedVerticesCounterView,                    /*projectedVerticesNextIndex*/
                 tileTriangleIndices.View,       /*tileTriangleIndexBuffer*/
                 tileTriangleCounts.View,        /*tileTriangleCountBuffer*/
                 renderResolutionView            /*renderResolution*/
             );
-            //accelerator.DefaultStream.Synchronize();
+            accelerator.DefaultStream.Synchronize();
             profilingStopwatch.Stop();
             int binningKernelTime = (int)profilingStopwatch.ElapsedMilliseconds;
             debugValues.Add("BinningKernel", binningKernelTime);
@@ -1087,7 +1088,7 @@ namespace ClosedGL
             svertexBufferMemory.Dispose();
             trianglesMemory.Dispose();
             uvsMemory.Dispose();
-            counter.Dispose();
+            projectedVerticesNextIndexBuffer.Dispose();
             triangleCountMemory.Dispose();
 
             profilingStopwatch.Stop();
@@ -1115,8 +1116,8 @@ namespace ClosedGL
             memoryUsage += svertexBufferMemory.Length * sizeof(float) * 3;
             memoryUsage += trianglesMemory.Length * sizeof(int);
             memoryUsage += uvsMemory.Length * sizeof(float) * 2;
-            memoryUsage += counter.Length * sizeof(long);
-            memoryUsage += triangleCountMemory.Length * sizeof(long);
+            memoryUsage += projectedVerticesNextIndexBuffer.Length * sizeof(int);
+            memoryUsage += triangleCountMemory.Length * sizeof(int);
             memoryUsage += gameObjectPositionsMemory.Length * sizeof(float) * 3;
             memoryUsage += gameObjectRotationsMemory.Length * sizeof(float) * 4;
             memoryUsage += gameObjectScalesMemory.Length * sizeof(float) * 3;
