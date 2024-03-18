@@ -249,7 +249,7 @@ namespace RenderTest
                         Rotation = volvo.Rotation,
                         Scale = volvo.Scale
                     };
-                    var res = camera.Render([/*house, , volvo2*/ volvo  /*..gameObjects*/]);
+                    var res = camera.Render([/*house, , volvo2*/ volvo , ..gameObjects]);
                     renderStopwatch.Stop();
 
                     foreach (var item in res.Keys.Reverse())

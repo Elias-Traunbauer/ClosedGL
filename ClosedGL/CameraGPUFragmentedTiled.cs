@@ -371,13 +371,18 @@ namespace ClosedGL
 
             for (int i = 0; i < trianglesPerGameObject.Length; i++)
             {
-                i += trianglesPerGameObject[gameObjectIndex];
                 currentTriangleCount += trianglesPerGameObject[gameObjectIndex];
+                gameObjectIndex++;
 
                 if (triangleIndex < currentTriangleCount)
                 {
                     break;
                 }
+            }
+
+            if (gameObjectIndex >= gameObjectPositions.Length)
+            {
+                return;
             }
 
             Vec3 position = gameObjectPositions[gameObjectIndex];
