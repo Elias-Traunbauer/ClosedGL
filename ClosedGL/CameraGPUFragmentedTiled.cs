@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
+using TraunisExtensions;
 using VRageMath;
 
 namespace ClosedGL
@@ -18,8 +19,8 @@ namespace ClosedGL
     {
         const int TILE_SIZE = 3;
         const int TILE_SIZE_SQUARED = TILE_SIZE * TILE_SIZE;
-        const int TRIANGLE_SIZE_SPLIT_THRESHOLD = TILE_SIZE_SQUARED * 2000;
-        const int TRIANGLE_SIZE_SPLIT_4_THRESHOLD = TILE_SIZE_SQUARED * 7000;
+        const int TRIANGLE_SIZE_SPLIT_THRESHOLD = TILE_SIZE_SQUARED * 500;
+        const int TRIANGLE_SIZE_SPLIT_4_THRESHOLD = TILE_SIZE_SQUARED * 1500;
         const int TRIANGLE_BUFFER_PER_TILE = 500;
 
         #region boring
@@ -100,6 +101,7 @@ namespace ClosedGL
         // preprocessing kernel
         private Action<
                        Index1D /*triangleIndex*/,
+                       VariableView<int>,
                                   ArrayView<Vec3> /*resultVertices*/,
                                              ArrayView<int> /*resultTriangles*/,
                                                         ArrayView<Vec2> /*resultUVs*/,
@@ -270,6 +272,7 @@ namespace ClosedGL
 
             preProcessorKernel = accelerator.LoadAutoGroupedStreamKernel<
                 Index1D, /*triangleIndex*/
+                VariableView<int>,
                 ArrayView<Vec3>, /*resultVertices*/
                 ArrayView<int>, /*resultTriangles*/
                 ArrayView<Vec2>, /*resultUVs*/
@@ -348,7 +351,8 @@ namespace ClosedGL
         /// Consumes gameObjects and produces vertices, triangles, uvs, textures, trianglesPerTexture
         /// </summary>
         public static void PreProcessorKernel(
-            Index1D triangleIndex,
+            Index1D triangleIndexGroup,
+            VariableView<int> triangleCount,
             ArrayView<Vec3> resultVertices,
             ArrayView<int> resultTriangles,
             ArrayView<Vec2> resultUVs,
@@ -365,61 +369,65 @@ namespace ClosedGL
             VariableView<MatrixK> worldMatrix
             )
         {
-            // get gameObjectIndex
-            int gameObjectIndex = 0;
-            int currentTriangleCount = 0;
+            int triangleIndexStart = triangleIndexGroup * triangleCount.Value;
 
-            for (int i = 0; i < trianglesPerGameObject.Length; i++)
+            for (int triangleIndex = triangleIndexStart; triangleIndex < triangleIndexStart + triangleCount.Value; triangleIndex++)
             {
-                currentTriangleCount += trianglesPerGameObject[gameObjectIndex];
-                gameObjectIndex++;
+                // get gameObjectIndex
+                int gameObjectIndex = 0;
+                int currentTriangleCount = 0;
 
-                if (triangleIndex < currentTriangleCount)
+                for (int i = 0; i < trianglesPerGameObject.Length; i++)
                 {
-                    break;
+                    currentTriangleCount += trianglesPerGameObject[gameObjectIndex];
+                    if (triangleIndex < currentTriangleCount)
+                    {
+                        break;
+                    }
+                    gameObjectIndex++;
                 }
+
+                if (gameObjectIndex >= gameObjectPositions.Length)
+                {
+                    return;
+                }
+
+                Vec3 position = gameObjectPositions[gameObjectIndex];
+                Quaternion rotation = gameObjectRotations[gameObjectIndex];
+                Vec3 scale = gameObjectScales[gameObjectIndex];
+
+                int verticesIndex = Atomic.Add(ref resultVerticesIndex.Value, 3);
+
+                int verticesStartIndex = triangleIndex * 3;
+
+                Vec3 v1 = vertexSourceBuffer[triangleSourceBuffer[verticesStartIndex + 0]];
+                Vec3 v2 = vertexSourceBuffer[triangleSourceBuffer[verticesStartIndex + 1]];
+                Vec3 v3 = vertexSourceBuffer[triangleSourceBuffer[verticesStartIndex + 2]];
+
+                //Vector3 worldVertexPosition = (vertex * gameObject.Rotation * gameObject.Scale) + gameObject.Position;
+                ////var localVertexPosition = TransformToLocal(worldVertexPosition);
+                //var localVertexPositionBeta = TransformToLocalBeta(worldVertexPosition);
+
+                v1 = (v1 * rotation * scale) + position;
+                v2 = (v2 * rotation * scale) + position;
+                v3 = (v3 * rotation * scale) + position;
+
+                v1 = TransformToLocalKernel(v1, cameraPosition.Value, worldMatrix.Value);
+                v2 = TransformToLocalKernel(v2, cameraPosition.Value, worldMatrix.Value);
+                v3 = TransformToLocalKernel(v3, cameraPosition.Value, worldMatrix.Value);
+
+                resultVertices[verticesIndex + 0] = v1;
+                resultVertices[verticesIndex + 1] = v2;
+                resultVertices[verticesIndex + 2] = v3;
+
+                resultTriangles[verticesIndex + 0] = (int)verticesIndex + 0;
+                resultTriangles[verticesIndex + 1] = (int)verticesIndex + 1;
+                resultTriangles[verticesIndex + 2] = (int)verticesIndex + 2;
+
+                resultUVs[verticesIndex + 0] = uvSourceBuffer[triangleSourceBuffer[verticesStartIndex + 0]];
+                resultUVs[verticesIndex + 1] = uvSourceBuffer[triangleSourceBuffer[verticesStartIndex + 1]];
+                resultUVs[verticesIndex + 2] = uvSourceBuffer[triangleSourceBuffer[verticesStartIndex + 2]];
             }
-
-            if (gameObjectIndex >= gameObjectPositions.Length)
-            {
-                return;
-            }
-
-            Vec3 position = gameObjectPositions[gameObjectIndex];
-            Quaternion rotation = gameObjectRotations[gameObjectIndex];
-            Vec3 scale = gameObjectScales[gameObjectIndex];
-
-            int verticesIndex = Atomic.Add(ref resultVerticesIndex.Value, 3);
-
-            int verticesStartIndex = triangleIndex * 3;
-
-            Vec3 v1 = vertexSourceBuffer[triangleSourceBuffer[verticesStartIndex + 0]];
-            Vec3 v2 = vertexSourceBuffer[triangleSourceBuffer[verticesStartIndex + 1]];
-            Vec3 v3 = vertexSourceBuffer[triangleSourceBuffer[verticesStartIndex + 2]];
-
-            //Vector3 worldVertexPosition = (vertex * gameObject.Rotation * gameObject.Scale) + gameObject.Position;
-            ////var localVertexPosition = TransformToLocal(worldVertexPosition);
-            //var localVertexPositionBeta = TransformToLocalBeta(worldVertexPosition);
-
-            v1 = (v1 * rotation * scale) + position;
-            v2 = (v2 * rotation * scale) + position;
-            v3 = (v3 * rotation * scale) + position;
-
-            v1 = TransformToLocalKernel(v1, cameraPosition.Value, worldMatrix.Value);
-            v2 = TransformToLocalKernel(v2, cameraPosition.Value, worldMatrix.Value);
-            v3 = TransformToLocalKernel(v3, cameraPosition.Value, worldMatrix.Value);
-
-            resultVertices[verticesIndex + 0] = v1;
-            resultVertices[verticesIndex + 1] = v2;
-            resultVertices[verticesIndex + 2] = v3;
-
-            resultTriangles[verticesIndex + 0] = (int)verticesIndex + 0;
-            resultTriangles[verticesIndex + 1] = (int)verticesIndex + 1;
-            resultTriangles[verticesIndex + 2] = (int)verticesIndex + 2;
-
-            resultUVs[verticesIndex + 0] = uvSourceBuffer[triangleSourceBuffer[verticesStartIndex + 0]];
-            resultUVs[verticesIndex + 1] = uvSourceBuffer[triangleSourceBuffer[verticesStartIndex + 1]];
-            resultUVs[verticesIndex + 2] = uvSourceBuffer[triangleSourceBuffer[verticesStartIndex + 2]];
         }
 
         public static Vec3 TransformToLocalKernel(Vec3 worldVector, Vec3 cameraPosition, MatrixK worldMatrix)
@@ -878,21 +886,47 @@ namespace ClosedGL
         }
         #endregion
 
-        public Dictionary<string, object> Render(List<GameObject> gameObjects)
+        public unsafe Dictionary<string, object> Render(List<GameObject> gameObjects)
         {
             Dictionary<string, object> debugValues = new();
             Stopwatch profilingStopwatch = new();
+            debugValues.Add("swapChain", swapChain.Count);
+            void Benchmark(Action action)
+            {
+                profilingStopwatch.Restart();
+                action();
+                profilingStopwatch.Stop();
+                debugValues.Add(action.Method.Name, profilingStopwatch.ElapsedMilliseconds);
+            }
             if (swapChain.Count > 2)
             {
                 swapChain.TryDequeue(out _);
             }
-
             profilingStopwatch.Restart();
 
             var meshes = gameObjects.Select(x => x.Mesh).Where(x => x != null);
 
-            var verticesSource = meshes.SelectMany(x => x!.Vertices).Select(x => new Vec3(x.X, x.Y, x.Z)).ToArray();
-            var verticesSourceMemory = accelerator.Allocate1D<Vec3>(verticesSource.Length);
+            profilingStopwatch.Restart();
+            int totalVerticesCount = meshes.Sum(mesh => mesh?.Vertices.Length ?? 0);
+            Vector3[] combinedVertices = new Vector3[totalVerticesCount];
+            int currentIndex = 0;
+            foreach (var mesh in meshes)
+            {
+                if (mesh != null)
+                {
+                    continue;
+                }
+                Array.Copy(mesh.Vertices, 0, combinedVertices, currentIndex, mesh.Vertices.Length);
+                currentIndex += mesh.Vertices.Length;
+            }
+
+
+            var verticesSource = meshes.SelectMany(x => x!.Vertices).Select(x => new Vec3(x.X, x.Y, x.Z));
+            profilingStopwatch.Stop();
+            int verticesSourceTime = (int)profilingStopwatch.ElapsedMilliseconds;
+            debugValues.Add("VerticesSource", verticesSourceTime);
+
+            var verticesSourceMemory = accelerator.Allocate1D<Vec3>(verticesSource.Count());
             verticesSourceMemory.CopyFromCPU(verticesSource);
 
             var trianglesSource = meshes.SelectMany(x => x!.Triangles).ToArray();
@@ -937,8 +971,27 @@ namespace ClosedGL
             cameraMatrixMemory.CopyFromCPU([this.WorldMatrixK]);
             var worldMatrix = cameraMatrixMemory.View.VariableView(0);
 
+            float coresToUse = trianglesSource.Length / 3;
+            coresToUse = XMath.Max(coresToUse, 1);
+            coresToUse = XMath.Min(coresToUse, trianglesSource.Length / 3);
+            int trianglesPreProcessPerCore = (int)XMath.Ceiling((float)trianglesSource.Length / 3 / coresToUse);
+
+            var triangleCountPreProcessMemory = accelerator.Allocate1D<int>(1);
+            triangleCountPreProcessMemory.CopyFromCPU([trianglesPreProcessPerCore]);
+
+            var triangleCountPreProcessView = triangleCountPreProcessMemory.View.VariableView(0);
+            debugValues.Add("TriangleCountPreProcess", trianglesPreProcessPerCore);
+            debugValues.Add("CoresToUse", coresToUse);
+
+            profilingStopwatch.Stop();
+            int memoryAllocationTime = (int)profilingStopwatch.ElapsedMilliseconds;
+            debugValues.Add("MemoryAllocation", memoryAllocationTime);
+
+            profilingStopwatch.Restart();
+
             preProcessorKernel(
-                               (Index1D)trianglesSource.Length / 3, /*triangleIndex*/
+                               (int)coresToUse, /*triangleIndex*/
+                               triangleCountPreProcessView,
                                 svertexBufferMemory.View, /*resultVertices*/
                                 trianglesMemory.View, /*resultTriangles*/
                                 uvsMemory.View, /*resultUVs*/
@@ -962,8 +1015,8 @@ namespace ClosedGL
             vertexCounter.CopyToCPU(vertexCounterArray);
             if (vertexCounterArray[0] == 0)
             {
-                Thread.Sleep(1);
-                swapChain.Enqueue([]);
+                Thread.Sleep(20);
+                swapChain.Enqueue(new byte[RenderResolution.X * RenderResolution.Y * bytesPerPixel]);
                 return debugValues;
             }
             profilingStopwatch.Restart();
@@ -1011,11 +1064,11 @@ namespace ClosedGL
             if (triangleCount == 0)
             {
                 swapChain.Enqueue(new byte[RenderResolution.X * RenderResolution.Y * bytesPerPixel]);
-                Thread.Sleep(5);
+                Thread.Sleep(20);
                 return debugValues;
             }
-            //double gpuCores = accelerator.MaxNumThreads;
-            double gpuCores = triangleCount;
+            double gpuCores = accelerator.MaxNumThreads * 5;
+            //double gpuCores = triangleCount;
 
             int trianglesPerCore = (int)XMath.Ceiling(triangleCount / gpuCores);
 
@@ -1024,6 +1077,7 @@ namespace ClosedGL
 
             gpuCores = (int)Math.Min(gpuCores, triangleCount);
             debugValues.Add("TrianglesPerCore", trianglesPerCore);
+            debugValues.Add("GPUCores", gpuCores);
 
             var triangleCountMemory = accelerator.Allocate1D<int>(1);
             triangleCountMemory.CopyFromCPU([trianglesPerCore]);
@@ -1100,7 +1154,7 @@ namespace ClosedGL
             int cleanupTime = (int)profilingStopwatch.ElapsedMilliseconds;
             debugValues.Add("Cleanup", cleanupTime);
 
-            debugValues.Add("TotalKernelTimes", projectionKernelTime + binningKernelTime + tileKernelTime);
+            debugValues.Add("TotalKernelTimes", projectionKernelTime + binningKernelTime + tileKernelTime + prepareRenderingTime);
             debugValues.Add("TotalTime", prepareRenderingTime + setupTime + projectionKernelTime + binningSetupTime + binningKernelTime + tileKernelTime + copyTime + cleanupTime);
 
             string[] sizes = ["b", "kb", "mb", "gb"];
@@ -1111,7 +1165,7 @@ namespace ClosedGL
                 while (bytes >= 1024 && order < sizes.Length - 1)
                 {
                     order++;
-                    bytes = bytes / 1024;
+                    bytes /= 1024;
                 }
 
                 return $"{bytes:0.##} {sizes[order]}";

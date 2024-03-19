@@ -46,7 +46,7 @@ namespace ClosedGL.InputSystem
             m_GlobalHook.MouseWheel += MouseWheel;
             m_GlobalHook.MouseMove += MouseMove;
 
-            m_GlobalHook.Dispose();
+            //m_GlobalHook.Dispose();
 
             // Set the cursor position to the center of the screen
             Cursor.Position = new System.Drawing.Point(Screen.PrimaryScreen.Bounds.Width / 2, Screen.PrimaryScreen.Bounds.Height / 2);

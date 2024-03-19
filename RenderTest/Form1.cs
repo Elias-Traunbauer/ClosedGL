@@ -48,12 +48,14 @@ namespace RenderTest
         Semaphore renderSemaphore = new(1, 1);
         Semaphore criticalState = new(1, 1);
 
-        Dictionary<string, object> debugValues = new Dictionary<string, object>();
+        ConcurrentDictionary<string, object> debugValues = new ConcurrentDictionary<string, object>();
 
         private void Form1_Load(object sender, EventArgs e)
         {
             GameObject house = GameObject.LoadFromObjFile("Models\\House.obj");
             GameObject volvo = GameObject.LoadFromObjFile("Models\\volvo 740 turbo.obj");
+            GameObject volvo2 = GameObject.LoadFromObjFile("Models\\volvo 740 turbo.obj");
+            volvo2.Position = new Vector3(20, 0, 0);
             house.Position = new Vector3(0, 0, -50);
             GameObject go = new Cube();
             GameObject cub = new Cube();
@@ -76,7 +78,7 @@ namespace RenderTest
 
             cub1.Position = new Vector3(30, 0, 0);
 
-            List<GameObject> gameObjects = new List<GameObject>() { };
+            List<GameObject> gameObjects = [];
 
             for (int x = 0; x < 20; x++)
             {
@@ -241,20 +243,15 @@ namespace RenderTest
                     //var res = camera.Render([go, cub, cub1, .. gameObjects/*, cubi,..   /*house*/]);
                     //var res = camera.Render(new List<GameObject>() { go, cub, cub1, }.Concat(gameObjects).ToList());
                     //var res = camera.Render([go, cub, cub1, .. gameObjects]);
-                    var volvo2 = new GameObject()
-                    {
-                        Mesh = volvo.Mesh,
-                        Texture = volvo.Texture,
-                        Position = volvo.Position + Vector3.Right * 20,
-                        Rotation = volvo.Rotation,
-                        Scale = volvo.Scale
-                    };
-                    var res = camera.Render([/*house, , volvo2*/ volvo , ..gameObjects]);
+
+                    volvo2.Rotation = Quaternion.CreateFromYawPitchRoll((float)Math.Sin(x / 10) * 30, (float)Math.Sin(x / 10) * 20, (float)Math.Sin(x / 10) * 10);
+
+                    var res = camera.Render([/*house, , volvo2*/ /*volvo , */ /*cub1, */volvo, /*volvo2*/ /*..gameObjects*/]);
                     renderStopwatch.Stop();
 
                     foreach (var item in res.Keys.Reverse())
                     {
-                        debugValues.Remove(item);
+                        debugValues.Remove(item, out _);
                     }
                     foreach (var item in res)
                     {
@@ -302,10 +299,10 @@ namespace RenderTest
                                 ("camPos", camera.Position),
                                 ("res", camera.RenderResolution),
                                 ("FPS (instant)", FPS),
-                                ("FPS (average)", lastFps.Average()),
+                                ("FPS (average)", lastFps.ToList().Average()),
                                 ("res", camera.RenderResolution),
                                 ("getFrame", crauy.ElapsedMilliseconds),
-                                ("frameTime (average)", lastFrametimes.Average()),
+                                ("frameTime (average)", lastFrametimes.ToList().Average()),
                                 ("unsuccessFulSwapAttempts", unsuccessfulSwapAttempts),
                                 ("swapChainLength", queueLength),
                                 ("mouseDelta", MouseDelta));
@@ -324,9 +321,9 @@ namespace RenderTest
                         //Thread.Sleep(Math.Max(0, (1000 / 60) - lastSwapTime));
                     }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-
+                    MessageBox.Show(ex.ToString());
                 }
             })
             {
@@ -344,7 +341,7 @@ namespace RenderTest
                 g.DrawString(value.Item1 + ": " + value.Item2.ToString(), new Font("Arial", 12), Brushes.White, 0, y);
                 y += 20;
             }
-            foreach (var item in debugValues)
+            foreach (var item in debugValues.ToDictionary())
             {
                 g.DrawString(item.Key + ": " + item.Value.ToString(), new Font("Arial", 12), Brushes.White, 0, y);
                 y += 20;

@@ -17,9 +17,10 @@ namespace VRageMath
     /// <summary>
     /// Defines a vector with three components.
     /// </summary>
-    
-    
+
+
 #if !XB1 // XB1_SYNC_SERIALIZER_NOEMIT
+    [StructLayout(LayoutKind.Sequential)]
     public struct Vector3 : IEquatable<Vector3>
 #else // XB1
     public struct Vector3 : IEquatable<Vector3>, IMySetGetMemberDataHelper
@@ -46,17 +47,17 @@ namespace VRageMath
         /// <summary>
         /// Gets or sets the x-component of the vector.
         /// </summary>
-        
+
         public float X;
         /// <summary>
         /// Gets or sets the y-component of the vector.
         /// </summary>
-        
+
         public float Y;
         /// <summary>
         /// Gets or sets the z-component of the vector.
         /// </summary>
-        
+
         public float Z;
 
 

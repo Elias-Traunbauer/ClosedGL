@@ -749,6 +749,7 @@ namespace ClosedGL
 
     }
 
+    [StructLayout(LayoutKind.Sequential)]
     public struct Vec3
     {
         public float x;
