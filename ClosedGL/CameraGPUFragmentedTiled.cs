@@ -1,4 +1,5 @@
 ﻿using ClosedGL.InputSystem;
+using ClosedGL.Memory;
 using ILGPU;
 using ILGPU.Algorithms;
 using ILGPU.Runtime;
@@ -17,7 +18,7 @@ namespace ClosedGL
     /// </summary>
     public class CameraGPUFragmentedTiled : GameObject, IRenderer
     {
-        const int TILE_SIZE = 3;
+        const int TILE_SIZE = 2;
         const int TILE_SIZE_SQUARED = TILE_SIZE * TILE_SIZE;
         const int TRIANGLE_SIZE_SPLIT_THRESHOLD = TILE_SIZE_SQUARED * 500;
         const int TRIANGLE_SIZE_SPLIT_4_THRESHOLD = TILE_SIZE_SQUARED * 1500;
@@ -115,7 +116,7 @@ namespace ClosedGL
                                                                                                                                                 VariableView<int> /*resultVerticesIndex*/,
                                                                                                                                                            VariableView<Vec3> /*cameraPosition*/,
                                                                                                                                                                       VariableView<MatrixK> /*worldMatrix*/
-                       > preProcessorKernel;
+                       > preProcessorKernel = null!;
         
         // projection kernel
         private Action<
@@ -126,7 +127,7 @@ namespace ClosedGL
             ArrayView<Triangle> /*vertexBuffer*/,
             VariableView<Vec3> /*viewPoint*/,
             VariableView<Vec3> /*renderResolution*/
-            > projectionKernel;
+            > projectionKernel = null!;
 
         // triangle bin kernel
         private Action<
@@ -136,7 +137,7 @@ namespace ClosedGL
             VariableView<int> /*projectedVerticesNextIndex*/, /* effectively the vertex count */
             ArrayView<int> /*tileTriangleIndexBuffer*/,
             ArrayView<int> /*tileTriangleCountBuffer*/,
-            VariableView<Vec3> /*renderResoultion*/> triangleBinningKernel;
+            VariableView<Vec3> /*renderResoultion*/> triangleBinningKernel = null!;
 
         // tile kernel
         private Action<
@@ -150,21 +151,21 @@ namespace ClosedGL
             ArrayView<int> /*textureWidths*/,
             ArrayView<int> /*textureHeights*/,
             ArrayView<byte> /*textures*/,
-            VariableView<Vec3> /*renderResoultion*/> tileKernel;
+            VariableView<Vec3> /*renderResoultion*/> tileKernel = null!;
 
 
-        MemoryBuffer1D<byte, Stride1D.Dense> textureMemory;
-        MemoryBuffer1D<byte, Stride1D.Dense> frameMemory;
-        MemoryBuffer1D<float, Stride1D.Dense> depthBufferMemory;
-        MemoryBuffer1D<Vec3, Stride1D.Dense> preBakedVectorsMemory;
-        MemoryBuffer1D<int, Stride1D.Dense> textureLengthsMemory;
-        MemoryBuffer1D<int, Stride1D.Dense> textureWidthsMemory;
-        MemoryBuffer1D<int, Stride1D.Dense> textureHeightsMemory;
-        MemoryBuffer1D<int, Stride1D.Dense> trianglesPerTextureMemory;
-        MemoryBuffer1D<Triangle, Stride1D.Dense> vertexBufferMemory;
-        MemoryBuffer1D<int, Stride1D.Dense> uvIndicesMemory;
-        MemoryBuffer1D<int, Stride1D.Dense> tileTriangleIndices;
-        MemoryBuffer1D<int, Stride1D.Dense> tileTriangleCounts;
+        MemoryBuffer1D<byte, Stride1D.Dense> textureMemory = null!;
+        MemoryBuffer1D<byte, Stride1D.Dense> frameMemory = null!;
+        MemoryBuffer1D<float, Stride1D.Dense> depthBufferMemory = null!;
+        MemoryBuffer1D<Vec3, Stride1D.Dense> preBakedVectorsMemory = null!;
+        MemoryBuffer1D<int, Stride1D.Dense> textureLengthsMemory = null!;
+        MemoryBuffer1D<int, Stride1D.Dense> textureWidthsMemory = null!;
+        MemoryBuffer1D<int, Stride1D.Dense> textureHeightsMemory = null!;
+        MemoryBuffer1D<int, Stride1D.Dense> trianglesPerTextureMemory = null!;
+        MemoryBuffer1D<Triangle, Stride1D.Dense> vertexBufferMemory = null!;
+        MemoryBuffer1D<int, Stride1D.Dense> uvIndicesMemory = null!;
+        MemoryBuffer1D<int, Stride1D.Dense> tileTriangleIndices = null!;
+        MemoryBuffer1D<int, Stride1D.Dense> tileTriangleCounts = null!;
         #endregion
 
         #region constructor/deconstructor
@@ -183,17 +184,19 @@ namespace ClosedGL
                 var allGpus = context.Devices.Where(x => x.AcceleratorType == AcceleratorType.Cuda || x.AcceleratorType == AcceleratorType.OpenCL || includeCPU);
                 if (allGpus.Count() > 0)
                 {
-                    System.Windows.Forms.Form form = new System.Windows.Forms.Form();
-                    form.Text = "Select GPU";
-                    form.Size = new System.Drawing.Size(200, 200);
-                    form.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-                    form.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
-                    form.MaximizeBox = false;
-                    form.MinimizeBox = false;
-                    form.ControlBox = false;
-                    form.ShowInTaskbar = false;
-                    form.TopMost = true;
-                    form.Visible = false;
+                    System.Windows.Forms.Form form = new System.Windows.Forms.Form
+                    {
+                        Text = "Select GPU",
+                        Size = new Size(200, 200),
+                        StartPosition = FormStartPosition.CenterScreen,
+                        FormBorderStyle = FormBorderStyle.FixedDialog,
+                        MaximizeBox = false,
+                        MinimizeBox = false,
+                        ControlBox = false,
+                        ShowInTaskbar = false,
+                        TopMost = true,
+                        Visible = false
+                    };
                     Cursor.Show();
                     int index = 0;
                     System.Windows.Forms.ListBox listBox = new System.Windows.Forms.ListBox();
@@ -891,13 +894,13 @@ namespace ClosedGL
             Dictionary<string, object> debugValues = new();
             Stopwatch profilingStopwatch = new();
             debugValues.Add("swapChain", swapChain.Count);
-            void Benchmark(Action action)
-            {
-                profilingStopwatch.Restart();
-                action();
-                profilingStopwatch.Stop();
-                debugValues.Add(action.Method.Name, profilingStopwatch.ElapsedMilliseconds);
-            }
+            //void Benchmark(Action action)
+            //{
+            //    profilingStopwatch.Restart();
+            //    action();
+            //    profilingStopwatch.Stop();
+            //    debugValues.Add(action.Method.Name, profilingStopwatch.ElapsedMilliseconds);
+            //}
             if (swapChain.Count > 2)
             {
                 swapChain.TryDequeue(out _);
@@ -908,32 +911,41 @@ namespace ClosedGL
 
             profilingStopwatch.Restart();
             int totalVerticesCount = meshes.Sum(mesh => mesh?.Vertices.Length ?? 0);
-            Vector3[] combinedVertices = new Vector3[totalVerticesCount];
-            int currentIndex = 0;
-            foreach (var mesh in meshes)
-            {
-                if (mesh != null)
-                {
-                    continue;
-                }
-                Array.Copy(mesh.Vertices, 0, combinedVertices, currentIndex, mesh.Vertices.Length);
-                currentIndex += mesh.Vertices.Length;
-            }
+            //Vector3[] combinedVertices = new Vector3[totalVerticesCount];
+            //int currentIndex = 0;
+            //foreach (var mesh in meshes)
+            //{
+            //    if (mesh == null)
+            //    {
+            //        continue;
+            //    }
+            //    Array.Copy(mesh!.Vertices, 0, combinedVertices, currentIndex, mesh.Vertices.Length);
+            //    currentIndex += mesh.Vertices.Length;
+            //}
+            //Vec3[] combinedVerticesCasted = new Vec3[totalVerticesCount];
+            //fixed (Vector3* p = combinedVertices)
+            //{
+            //    fixed (Vec3* q = combinedVerticesCasted)
+            //    {
+            //        Buffer.MemoryCopy(p, q, totalVerticesCount * sizeof(Vec3), totalVerticesCount * sizeof(Vec3));
+            //    }
+            //}
+            //var combinedVerticesCasted = UnsafeArrayHandler.FlattenAndCastArraysBeta<Vector3, Vec3, Mesh>(meshes!, x => x.Vertices);
+            var combinedVerticesCasted = meshes.Select(x => x.Vertices).SelectMany(x => x).Select(x => new Vec3(x.X, x.Y, x.Z)).ToArray();
+            var verticesSourceMemory = accelerator.Allocate1D<Vec3>(totalVerticesCount);
+            verticesSourceMemory.CopyFromCPU(combinedVerticesCasted);
 
-
-            var verticesSource = meshes.SelectMany(x => x!.Vertices).Select(x => new Vec3(x.X, x.Y, x.Z));
             profilingStopwatch.Stop();
             int verticesSourceTime = (int)profilingStopwatch.ElapsedMilliseconds;
             debugValues.Add("VerticesSource", verticesSourceTime);
+            profilingStopwatch.Restart();
 
-            var verticesSourceMemory = accelerator.Allocate1D<Vec3>(verticesSource.Count());
-            verticesSourceMemory.CopyFromCPU(verticesSource);
-
-            var trianglesSource = meshes.SelectMany(x => x!.Triangles).ToArray();
+            var trianglesSource = UnsafeArrayHandler.FlattenArrays<int, Mesh>(meshes!, x => x.Triangles);
+            // var trianglesSource = meshes.Select(x => x.Triangles).SelectMany(x => x).ToArray();
             var trianglesSourceMemory = accelerator.Allocate1D<int>(trianglesSource.Length);
             trianglesSourceMemory.CopyFromCPU(trianglesSource);
 
-            var uvsSource = meshes.SelectMany(x => x!.UVs).Select(x => new Vec2(x.X, x.Y)).ToArray();
+            var uvsSource = UnsafeArrayHandler.FlattenAndCastArraysBeta<Vector2, Vec2, Mesh>(meshes!, x => x.UVs);
             var uvsSourceMemory = accelerator.Allocate1D<Vec2>(uvsSource.Length);
             uvsSourceMemory.CopyFromCPU(uvsSource);
 
@@ -945,11 +957,13 @@ namespace ClosedGL
             var gameObjectRotationsMemory = accelerator.Allocate1D<Quaternion>(gameObjectRotations.Length);
             gameObjectRotationsMemory.CopyFromCPU(gameObjectRotations);
 
-            var gameObjectPositions = gameObjects.Select(x => x.Position).Select(x => new Vec3(x.X, x.Y, x.Z)).ToArray();
+            var gameObjectPositions = UnsafeArrayHandler.ExtractFieldAndCastArray<Vector3, Vec3, GameObject>(gameObjects, gameObject => gameObject.Position);
+            //var gameObjectPositions = gameObjects.Select(x => x.Position).Select(x => new Vec3(x.X, x.Y, x.Z)).ToArray();
             var gameObjectPositionsMemory = accelerator.Allocate1D<Vec3>(gameObjectPositions.Length);
             gameObjectPositionsMemory.CopyFromCPU(gameObjectPositions);
 
-            var gameObjectScales = gameObjects.Select(x => x.Scale).Select(x => new Vec3(x.X, x.Y, x.Z)).ToArray();
+            var gameObjectScales = UnsafeArrayHandler.ExtractFieldAndCastArray<Vector3, Vec3, GameObject>(gameObjects, gameObject => gameObject.Scale);
+            //var gameObjectScales = gameObjects.Select(x => x.Scale).Select(x => new Vec3(x.X, x.Y, x.Z)).ToArray();
             var gameObjectScalesMemory = accelerator.Allocate1D<Vec3>(gameObjectScales.Length);
             gameObjectScalesMemory.CopyFromCPU(gameObjectScales);
 
@@ -984,7 +998,7 @@ namespace ClosedGL
             debugValues.Add("CoresToUse", coresToUse);
 
             profilingStopwatch.Stop();
-            int memoryAllocationTime = (int)profilingStopwatch.ElapsedMilliseconds;
+            double memoryAllocationTime = profilingStopwatch.Elapsed.TotalMilliseconds;
             debugValues.Add("MemoryAllocation", memoryAllocationTime);
 
             profilingStopwatch.Restart();

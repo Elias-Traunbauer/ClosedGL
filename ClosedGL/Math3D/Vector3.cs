@@ -48,6 +48,11 @@ namespace VRageMath
         /// Gets or sets the x-component of the vector.
         /// </summary>
 
+        public static explicit operator Vec3(Vector3 d)
+        {
+            return new Vec3(d.X, d.Y, d.Z);
+        }
+
         public float X;
         /// <summary>
         /// Gets or sets the y-component of the vector.
