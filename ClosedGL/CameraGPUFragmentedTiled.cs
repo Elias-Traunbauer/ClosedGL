@@ -1050,17 +1050,22 @@ namespace ClosedGL
                 return debugValues;
             }
 
+            RecordTime("early_exit_check");
             UpdatePreBakedVectors();
+
+            RecordTime("pre_baking");
 
             frameMemory.MemSetToZero();
             //depthBufferMemory.CopyFromCPU(Enumerable.Repeat<float>(float.MaxValue, (int)depthBufferMemory.Length).ToArray());
             depthBufferMemory.MemSetToZero();
             vertexBufferMemory.MemSetToZero();
             tileTriangleCounts.MemSetToZero();
+            RecordTime("zero_setting");
 
             var projectedVerticesNextIndexBuffer = accelerator.Allocate1D<int>(1);
             projectedVerticesNextIndexBuffer.MemSetToZero();
             var projectedVerticesCounterView = projectedVerticesNextIndexBuffer.View.VariableView(0);
+            RecordTime("projectionsetup_counter");
 
             var viewPointView = preBakedVectorsMemory.View.VariableView(0);
             var renderResolutionView = preBakedVectorsMemory.View.VariableView(1);
@@ -1079,7 +1084,6 @@ namespace ClosedGL
 
             RecordTime("projection_setup");
 
-            profilingStopwatch.Restart();
             projectionKernel(
                 (int)Math.Ceiling(coresToUseProjection)  + 1,            /*triangleIndex*/
                 triangleCountProjectionView,

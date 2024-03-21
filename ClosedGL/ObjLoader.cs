@@ -66,7 +66,20 @@ namespace ClosedGL
                     uvs.Add(new Vector2(u, v));
                 }
             }
-
+            int left = vertices.Count % 3;
+            if (left == 2)
+            {
+                vertices.Add(vertices.Last());
+            }
+            if (left == 1)
+            {
+                vertices.Add(vertices.Last());
+                vertices.Add(vertices.Last());
+            }
+            if (vertices.Count() % 3 != 0)
+            {
+                throw new Exception("Vertices must be divisable by 3");
+            }
             var mesh = new Mesh()
             {
                 Vertices = vertices.ToArray(),

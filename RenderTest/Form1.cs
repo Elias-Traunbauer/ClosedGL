@@ -188,14 +188,14 @@ namespace RenderTest
 
                     MouseDelta *= 0.001f;
 
-                    foreach (var item in gameObjects)
-                    {
-                        float sine = (float)Math.Sin(x * 4) / 2 - 1;
-                        item.Scale = new Vector3(3, 3, 3) / 2 * (sine + 2);
-                        item.Rotation = Quaternion.CreateFromYawPitchRoll((float)Math.Sin(x / 5) * 10, (float)Math.Sin(x / 5) * 10, (float)Math.Sin(x / 5) * 10);
-                    }
+                    //foreach (var item in gameObjects)
+                    //{
+                    //    float sine = (float)Math.Sin(x * 4) / 2 - 1;
+                    //    item.Scale = new Vector3(3, 3, 3) / 2 * (float)Math.Clamp((sine + 2), 1.5d, 2d);
+                    //    item.Rotation = Quaternion.CreateFromYawPitchRoll((float)Math.Sin(x / 5) * 10, (float)Math.Sin(x / 5) * 10, (float)Math.Sin(x / 5) * 10);
+                    //}
 
-                    cameraVelocity *= 0.95d;
+                    cameraVelocity *= 0.9d;
 
                     camera.Position += cameraVelocity * deltaTime;
 
