@@ -52,6 +52,8 @@ namespace RenderTest
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            lastFps.Enqueue(60);
+            lastFrametimes.Enqueue(16);
             GameObject house = GameObject.LoadFromObjFile("Models\\House.obj");
             GameObject volvo = GameObject.LoadFromObjFile("Models\\volvo 740 turbo.obj");
             GameObject volvo2 = GameObject.LoadFromObjFile("Models\\volvo 740 turbo.obj");
@@ -80,9 +82,9 @@ namespace RenderTest
 
             List<GameObject> gameObjects = [];
 
-            for (int x = 0; x < 20; x++)
+            for (int x = 0; x < 30; x++)
             {
-                for (int z = 0; z < 20; z++)
+                for (int z = 0; z < 30; z++)
                 {
                     GameObject g = new Cube();
                     g.Position = new Vector3((x - 10) * 3, (z - 10) * 3, -15);
@@ -91,12 +93,12 @@ namespace RenderTest
                 }
             }
 
-            for (int x = 0; x < 20; x++)
+            for (int x = 0; x < 30; x++)
             {
-                for (int z = 0; z < 20; z++)
+                for (int z = 0; z < 30; z++)
                 {
                     GameObject g = new Cube();
-                    g.Position = new Vector3(30, (z - 10) * 3, (x - 10) * 3);
+                    g.Position = new Vector3((z - 10) * 3 , - 20, (x - 10) * 3);
                     g.Scale = new Vector3(3f);
                     gameObjects.Add(g);
                 }
@@ -186,6 +188,13 @@ namespace RenderTest
 
                     MouseDelta *= 0.001f;
 
+                    foreach (var item in gameObjects)
+                    {
+                        float sine = (float)Math.Sin(x * 4) / 2 - 1;
+                        item.Scale = new Vector3(3, 3, 3) / 2 * (sine + 2);
+                        item.Rotation = Quaternion.CreateFromYawPitchRoll((float)Math.Sin(x / 5) * 10, (float)Math.Sin(x / 5) * 10, (float)Math.Sin(x / 5) * 10);
+                    }
+
                     cameraVelocity *= 0.95d;
 
                     camera.Position += cameraVelocity * deltaTime;
@@ -246,16 +255,16 @@ namespace RenderTest
 
                     volvo2.Rotation = Quaternion.CreateFromYawPitchRoll((float)Math.Sin(x / 10) * 30, (float)Math.Sin(x / 10) * 20, (float)Math.Sin(x / 10) * 10);
 
-                    var res = camera.Render([/*house, , volvo2*/ /*volvo , */ /*cub1, */volvo, /*volvo2*/ /*..gameObjects*/]);
+                    var res = camera.Render([/*house, , volvo2*/ /*volvo , */ /*cub1, */ /*volvo, volvo2*/ .. gameObjects]);
                     renderStopwatch.Stop();
 
-                    foreach (var item in res.Keys.Reverse())
+                    //foreach (var item in res.Keys.Reverse())
+                    //{
+                    //    debugValues.Remove(item, out _);
+                    //}
+                    foreach (var item in res.Reverse())
                     {
-                        debugValues.Remove(item, out _);
-                    }
-                    foreach (var item in res)
-                    {
-                        debugValues[item.Key] = item.Value;
+                        debugValues.AddOrUpdate(item.Key, item.Value, (k, v) => item.Value);
                     }
                     lastFrametimes.Enqueue((int)renderStopwatch.ElapsedMilliseconds);
                     if (lastFrametimes.Count > 10)
