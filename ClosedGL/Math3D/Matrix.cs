@@ -2980,39 +2980,39 @@ return flag;
             result.M43 = matrix1.M43 + (matrix2.M43 - matrix1.M43) * amount;
         }
 
-        /// <summary>
-        /// Performs spherical linear interpolation of position and rotation and scale.
-        /// </summary>
-        public static void SlerpScale(ref Matrix matrix1, ref Matrix matrix2, float amount, out Matrix result)
-        {
-            var scale1 = matrix1.Scale;
-            var scale2 = matrix2.Scale;
+        ///// <summary>
+        ///// Performs spherical linear interpolation of position and rotation and scale.
+        ///// </summary>
+        //public static void SlerpScale(ref Matrix matrix1, ref Matrix matrix2, float amount, out Matrix result)
+        //{
+        //    var scale1 = matrix1.Scale;
+        //    var scale2 = matrix2.Scale;
 
-            if (scale1.LengthSquared() < 0.000001f || scale2.LengthSquared() < 0.000001f)
-            {
-                result = Matrix.Zero;
-                return;
-            }
+        //    if (scale1.LengthSquared() < 0.000001f || scale2.LengthSquared() < 0.000001f)
+        //    {
+        //        result = Matrix.Zero;
+        //        return;
+        //    }
 
-            var matrix1Normalized = Matrix.Normalize(matrix1);
-            var matrix2Normalized = Matrix.Normalize(matrix2);
+        //    var matrix1Normalized = Matrix.Normalize(matrix1);
+        //    var matrix2Normalized = Matrix.Normalize(matrix2);
 
 
-            Quaternion a, b, c;
-            Quaternion.CreateFromRotationMatrix(ref matrix1Normalized, out a);
-            Quaternion.CreateFromRotationMatrix(ref matrix2Normalized, out b);
+        //    Quaternion a, b, c;
+        //    Quaternion.CreateFromRotationMatrix(ref matrix1Normalized, out a);
+        //    Quaternion.CreateFromRotationMatrix(ref matrix2Normalized, out b);
 
-            Quaternion.Slerp(ref a, ref b, amount, out c);
-            Matrix.CreateFromQuaternion(ref c, out result);
+        //    Quaternion.Slerp(ref a, ref b, amount, out c);
+        //    Matrix.CreateFromQuaternion(ref c, out result);
 
-            var scale = Vector3.Lerp(scale1, scale2, amount);
-            Matrix.Rescale(ref result, ref scale);
+        //    var scale = Vector3.Lerp(scale1, scale2, amount);
+        //    Matrix.Rescale(ref result, ref scale);
 
-            // Interpolate position
-            result.M41 = matrix1.M41 + (matrix2.M41 - matrix1.M41) * amount;
-            result.M42 = matrix1.M42 + (matrix2.M42 - matrix1.M42) * amount;
-            result.M43 = matrix1.M43 + (matrix2.M43 - matrix1.M43) * amount;
-        }
+        //    // Interpolate position
+        //    result.M41 = matrix1.M41 + (matrix2.M41 - matrix1.M41) * amount;
+        //    result.M42 = matrix1.M42 + (matrix2.M42 - matrix1.M42) * amount;
+        //    result.M43 = matrix1.M43 + (matrix2.M43 - matrix1.M43) * amount;
+        //}
 
         /// <summary>
         /// Performs spherical linear interpolation of position and rotation.
@@ -3032,23 +3032,23 @@ return flag;
             return result;
         }
 
-        /// <summary>
-        /// Performs spherical linear interpolation of position and rotation and scale.
-        /// </summary>
-        public static void SlerpScale(Matrix matrix1, Matrix matrix2, float amount, out Matrix result)
-        {
-            SlerpScale(ref matrix1, ref matrix2, amount, out result);
-        }
+        ///// <summary>
+        ///// Performs spherical linear interpolation of position and rotation and scale.
+        ///// </summary>
+        //public static void SlerpScale(Matrix matrix1, Matrix matrix2, float amount, out Matrix result)
+        //{
+        //    SlerpScale(ref matrix1, ref matrix2, amount, out result);
+        //}
 
-        /// <summary>
-        /// Performs spherical linear interpolation of position and rotation and scale.
-        /// </summary>
-        public static Matrix SlerpScale(Matrix matrix1, Matrix matrix2, float amount)
-        {
-            Matrix result;
-            SlerpScale(ref matrix1, ref matrix2, amount, out result);
-            return result;
-        }
+        ///// <summary>
+        ///// Performs spherical linear interpolation of position and rotation and scale.
+        ///// </summary>
+        //public static Matrix SlerpScale(Matrix matrix1, Matrix matrix2, float amount)
+        //{
+        //    Matrix result;
+        //    SlerpScale(ref matrix1, ref matrix2, amount, out result);
+        //    return result;
+        //}
 
 
         /// <summary>

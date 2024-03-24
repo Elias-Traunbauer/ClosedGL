@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ClosedGL.SMath;
+using System;
 using System.Diagnostics;
 using System.Globalization;
 
@@ -8,7 +9,7 @@ namespace VRageMath
     /// Defines a four-dimensional vector (x,y,z,w), which is used to efficiently rotate an object about the (x, y, z) vector by the angle theta, where w = cos(theta/2).
     /// </summary>
     [Serializable]
-    public struct Quaternion : IEquatable<Quaternion>
+    public struct Quaternion : IEquatable<Quaternion>, ILerpable<Quaternion>
     {
         public static Quaternion Identity = new Quaternion(0.0f, 0.0f, 0.0f, 1f);
         public static Quaternion Zero = new Quaternion(0.0f, 0.0f, 0.0f, 0.0f);
@@ -32,6 +33,11 @@ namespace VRageMath
         /// </summary>
         
         public float W;
+
+        //public Quaternion Lerp(Quaternion q1, Quaternion q2, float t)
+        //{
+        //    return Slerp(q1, q2, t);
+        //}
 
         public Vector3 Forward
         {
@@ -759,7 +765,7 @@ namespace VRageMath
         /// Linearly interpolates between two quaternions.
         /// </summary>
         /// <param name="quaternion1">Source quaternion.</param><param name="quaternion2">Source quaternion.</param><param name="amount">Value indicating how far to interpolate between the quaternions.</param>
-        public static Quaternion Lerp(Quaternion quaternion1, Quaternion quaternion2, float amount)
+        public Quaternion Lerp(Quaternion quaternion1, Quaternion quaternion2, float amount)
         {
             float num1 = amount;
             float num2 = 1f - num1;

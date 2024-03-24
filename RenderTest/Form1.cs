@@ -49,7 +49,7 @@ namespace RenderTest
         Semaphore renderSemaphore = new(1, 1);
         Semaphore criticalState = new(1, 1);
 
-        ConcurrentDictionary<string, object> debugValues = new ConcurrentDictionary<string, object>();
+        Dictionary<string, object> debugValues = new Dictionary<string, object>();
 
         private void Form1_Load(object sender, EventArgs e)
         {
@@ -114,6 +114,36 @@ namespace RenderTest
                 Position = new Vector3(0, 0, 40),
                 RenderResolution = new Vector2I(Width, Height),
             };
+
+            LerpyLength<Vector3> lerpyVec = new(
+                [
+                    new Vector3(100, 10, 100),
+                    new Vector3(150, 30, 100),
+                    new Vector3(200, 10, 100),
+                    new Vector3(200, 10, 150),
+                    new Vector3(200, 30, 200),
+                    new Vector3(200, 10, 200),
+                    new Vector3(100, 10, 100),
+                ]);
+                //,
+                //[
+                //    0.16f * 0,
+                //    0.16f * 1,
+                //    0.16f * 2,
+                //    0.16f * 3,
+                //    0.16f * 4,
+                //    0.16f * 5,
+                //    1,
+                //]);
+
+
+            Lerpy <Quaternion> lerpyQ = new(
+                [
+                    Quaternion.CreateFromYawPitchRoll(0, 0, 0),
+                    Quaternion.CreateFromYawPitchRoll(180, 0, 0),
+                    Quaternion.CreateFromYawPitchRoll(360, 0, 0),
+                ],
+                [0.33f, 0.66f, 1f]);
 
             camera.Initialize([house.Texture!]);
             var perlin = new PerlinNoise(1);
@@ -189,15 +219,23 @@ namespace RenderTest
 
                     MouseDelta *= deltaTime;
                     MouseDelta /= 70;
+                    cub.Position = lerpyVec.GetValue(x / 2) / 2;
+                    //camera.Rotation = lerpyQ.GetValue(x / 10);
 
                     foreach (var item in gameObjects)
                     {
                         float sine = (float)Math.Sin(x * 4) / 2 - 1;
                         //item.Scale = new Vector3(3, 3, 3) / 2 * (float)Math.Clamp((sine + 2), 1.5d, 2d);
                         //item.Rotation = Quaternion.CreateFromYawPitchRoll((float)Math.Sin(x / 5) * 10, (float)Math.Sin(x / 5) * 10, (float)Math.Sin(x / 5) * 10);
-                        var temp = item.Position;
-                        temp.Y = -20 + perlin.Generate(temp.X / 30 + x, temp.Z / 30 + x) * 15;
-                        item.Position = temp;
+
+
+                        //var temp = item.Position;
+                        //temp.Y = -20 + perlin.Generate(temp.X / 30 + x, temp.Z / 30 + x) * 15;
+                        //item.Position = temp;
+
+                        var scale = item.Scale;
+                        scale.Y = 10 + perlin.Generate(item.Position.X / 30 + x, item.Position.Z / 30 + x) * 15;
+                        item.Scale = scale;
                     }
 
                     cameraVelocity *= 0.9d;
@@ -229,12 +267,12 @@ namespace RenderTest
                     //camera.FieldOfView = (float)Math.Sin(x) * 35 + 60;
 
                     Vector3 cubPos = Vector3.Up * 30 * Quaternion.CreateFromAxisAngle(Vector3.Forward, x * 0.7f + (float)Math.Sin(x));
-                    cub.Position = cubPos;
+                    //cub.Position = cubPos;
 
                     Vector3 cudddbPos = Vector3.Forward * 30 * Quaternion.CreateFromAxisAngle(Vector3.Right, x * 0.4f + (float)Math.Sin(x));
-                    cub1.Position = cudddbPos + Vector3.Left * 20;
-                    cub1.Scale = new Vector3(7);
-                    cub1.Rotation = Quaternion.CreateFromYawPitchRoll(0, (float)Math.Sin(x), 0);
+                    //cub1.Position = cudddbPos + Vector3.Left * 20;
+                    //cub1.Scale = new Vector3(7);
+                    //cub1.Rotation = Quaternion.CreateFromYawPitchRoll(0, (float)Math.Sin(x), 0);
 
                     volvo.Rotation = Quaternion.CreateFromYawPitchRoll((float)Math.Sin(x) * 3, 0, 0);
 
@@ -260,17 +298,19 @@ namespace RenderTest
 
                     volvo2.Rotation = Quaternion.CreateFromYawPitchRoll((float)Math.Sin(x / 10) * 30, (float)Math.Sin(x / 10) * 20, (float)Math.Sin(x / 10) * 10);
 
-                    var res = camera.Render([/*house, , volvo2*/ /*volvo , */ /*cub1, */ /*volvo, volvo2*/ .. gameObjects]);
+                    var res = camera.Render([/*house, , volvo2*/ /*volvo , */ /*cub1, */ /*volvo, volvo2*/ cub, .. gameObjects]);
                     renderStopwatch.Stop();
 
                     //foreach (var item in res.Keys.Reverse())
                     //{
                     //    debugValues.Remove(item, out _);
                     //}
-                    foreach (var item in res.Reverse())
+                    var copy = debugValues.ToDictionary();
+                    foreach (var item in res)
                     {
-                        debugValues.AddOrUpdate(item.Key, item.Value, (k, v) => item.Value);
+                        copy[item.Key] = item.Value;
                     }
+                    debugValues = copy;
                     lastFrametimes.Enqueue((int)renderStopwatch.ElapsedMilliseconds);
                     if (lastFrametimes.Count > 10)
                     {

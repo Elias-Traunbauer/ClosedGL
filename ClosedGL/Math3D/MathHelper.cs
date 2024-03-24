@@ -649,5 +649,10 @@ namespace VRageMath
             else
                 return (float)-Math.Acos(cos);
         }
+
+        internal static object Lerp(object x1, object x2, float t)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

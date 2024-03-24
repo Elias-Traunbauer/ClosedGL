@@ -606,43 +606,43 @@ namespace VRageMath
 	        return true;
         }
 
-        public BoundingSphere Include(BoundingSphere sphere)
-        {
-            BoundingSphere.Include(ref this, ref sphere);
-            return this;
-        }
+        //public BoundingSphere Include(BoundingSphere sphere)
+        //{
+        //    BoundingSphere.Include(ref this, ref sphere);
+        //    return this;
+        //}
 
-        public static void Include(ref BoundingSphere sphere, ref BoundingSphere otherSphere)
-        {
-            if (sphere.Radius == float.MinValue)
-            {
-                sphere.Center = otherSphere.Center;
-                sphere.Radius = otherSphere.Radius;
-                return;
-            }
+        //public static void Include(ref BoundingSphere sphere, ref BoundingSphere otherSphere)
+        //{
+        //    if (sphere.Radius == float.MinValue)
+        //    {
+        //        sphere.Center = otherSphere.Center;
+        //        sphere.Radius = otherSphere.Radius;
+        //        return;
+        //    }
 
-            float distance = Vector3.Distance(sphere.Center, otherSphere.Center);
-            if (distance + otherSphere.Radius <= sphere.Radius) // Other sphere is contained in this sphere
-                return;
-            else if (distance + sphere.Radius <= otherSphere.Radius) // This sphere is contained in other sphere
-            {
-                sphere = otherSphere;
-            }
-            else
-            {
-                // Now we know that center will lie between the old centers. Let's calculate linterpolation factors a and b:
-                // r_1 + a*d = r_2 + b*d   and   a + b = 1   give:
-                // a = (d + r_2 - r_1) / (2*d)
-                // b = (d + r_1 - r_2) / (2*d) = 1 - a
+        //    float distance = Vector3.Distance(sphere.Center, otherSphere.Center);
+        //    if (distance + otherSphere.Radius <= sphere.Radius) // Other sphere is contained in this sphere
+        //        return;
+        //    else if (distance + sphere.Radius <= otherSphere.Radius) // This sphere is contained in other sphere
+        //    {
+        //        sphere = otherSphere;
+        //    }
+        //    else
+        //    {
+        //        // Now we know that center will lie between the old centers. Let's calculate linterpolation factors a and b:
+        //        // r_1 + a*d = r_2 + b*d   and   a + b = 1   give:
+        //        // a = (d + r_2 - r_1) / (2*d)
+        //        // b = (d + r_1 - r_2) / (2*d) = 1 - a
 
-                float a = (distance + otherSphere.Radius - sphere.Radius) / (2.0f * distance);
+        //        float a = (distance + otherSphere.Radius - sphere.Radius) / (2.0f * distance);
 
-                Vector3 center = Vector3.Lerp(sphere.Center, otherSphere.Center, a);
-                float radius = (distance + sphere.Radius + otherSphere.Radius) / 2;
+        //        Vector3 center = Vector3.Lerp(sphere.Center, otherSphere.Center, a);
+        //        float radius = (distance + sphere.Radius + otherSphere.Radius) / 2;
 
-                sphere.Center = center;
-                sphere.Radius = radius;
-            }
-        }
+        //        sphere.Center = center;
+        //        sphere.Radius = radius;
+        //    }
+        //}
     }
 }

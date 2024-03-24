@@ -2,6 +2,7 @@
 //#define NATIVE_SUPPORT
 
 using ClosedGL;
+using ClosedGL.SMath;
 using System;
 using System.Diagnostics;
 using System.Globalization;
@@ -19,12 +20,8 @@ namespace VRageMath
     /// </summary>
 
 
-#if !XB1 // XB1_SYNC_SERIALIZER_NOEMIT
     [StructLayout(LayoutKind.Sequential)]
-    public struct Vector3 : IEquatable<Vector3>
-#else // XB1
-    public struct Vector3 : IEquatable<Vector3>, IMySetGetMemberDataHelper
-#endif // XB1
+    public struct Vector3 : ILerpable<Vector3>, IEquatable<Vector3>, ILengthable<Vector3>
     {
         public static Vector3 Zero = new Vector3();
         public static Vector3 One = new Vector3(1f, 1f, 1f);
@@ -1045,7 +1042,7 @@ namespace VRageMath
         /// Performs a linear interpolation between two vectors.
         /// </summary>
         /// <param name="value1">Source vector.</param><param name="value2">Source vector.</param><param name="amount">Value between 0 and 1 indicating the weight of value2.</param>
-        public static Vector3 Lerp(Vector3 value1, Vector3 value2, float amount)
+        public Vector3 Lerp(Vector3 value1, Vector3 value2, float amount)
         {
             Vector3 vector3;
             vector3.X = value1.X + (value2.X - value1.X) * amount;
@@ -1921,6 +1918,11 @@ namespace VRageMath
         public static Vector3 Round(Vector3 v,int numDecimals)
         {
             return new Vector3(Math.Round(v.X, numDecimals), Math.Round(v.Y, numDecimals), Math.Round(v.Z, numDecimals));
+        }
+
+        public Vector3 To(Vector3 to)
+        {
+            return to - this;
         }
 
 #if XB1 // XB1_SYNC_SERIALIZER_NOEMIT

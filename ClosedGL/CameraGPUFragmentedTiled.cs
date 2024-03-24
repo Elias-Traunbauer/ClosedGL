@@ -20,7 +20,7 @@ namespace ClosedGL
     /// </summary>
     public class CameraGPUFragmentedTiled : GameObject, IRenderer
     {
-        const int TILE_SIZE = 5;
+        const int TILE_SIZE = 8;
         const int TILE_SIZE_SQUARED = TILE_SIZE * TILE_SIZE;
         const int TRIANGLE_SIZE_SPLIT_THRESHOLD = TILE_SIZE_SQUARED * 500;
         const int TRIANGLE_SIZE_SPLIT_4_THRESHOLD = TILE_SIZE_SQUARED * 1500;
@@ -1110,7 +1110,7 @@ namespace ClosedGL
                 Thread.Sleep(20);
                 return debugValues;
             }
-            double gpuCores = accelerator.MaxNumThreads * 5;
+            double gpuCores = accelerator.MaxNumThreads;
             //double gpuCores = triangleCount;
 
             int trianglesPerCore = (int)XMath.Ceiling(triangleCount / gpuCores);
@@ -1120,7 +1120,7 @@ namespace ClosedGL
 
             gpuCores = (int)Math.Min(gpuCores, triangleCount);
             debugValues.Add("TrianglesPerCore", trianglesPerCore);
-            debugValues.Add("GPUCores", gpuCores);
+            debugValues.Add("binningGPUCores", gpuCores);
 
             var triangleCountMemory = accelerator.Allocate1D<int>(1);
             triangleCountMemory.CopyFromCPU([trianglesPerCore]);
