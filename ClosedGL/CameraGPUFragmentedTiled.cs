@@ -1,5 +1,6 @@
 ﻿using ClosedGL.InputSystem;
 using ClosedGL.Memory;
+using System;
 using ILGPU;
 using ILGPU.Algorithms;
 using ILGPU.Runtime;
@@ -19,7 +20,7 @@ namespace ClosedGL
     /// </summary>
     public class CameraGPUFragmentedTiled : GameObject, IRenderer
     {
-        const int TILE_SIZE = 4;
+        const int TILE_SIZE = 5;
         const int TILE_SIZE_SQUARED = TILE_SIZE * TILE_SIZE;
         const int TRIANGLE_SIZE_SPLIT_THRESHOLD = TILE_SIZE_SQUARED * 500;
         const int TRIANGLE_SIZE_SPLIT_4_THRESHOLD = TILE_SIZE_SQUARED * 1500;

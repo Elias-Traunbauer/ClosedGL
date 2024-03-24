@@ -15,10 +15,9 @@ namespace ComponentBenchmark
         public IEnumerable<Mesh> Meshes { get; set; } = new List<Mesh>();
 
         [BeforeAllBenchmark]
-        [Benchmark]
         public void BeforeEach()
         {
-            List<GameObject> list = new List<GameObject>();
+            List<GameObject> list = [];
             GameObject volvo = GameObject. LoadFromObjFile("Models\\volvo 740 turbo.obj");
             GameObject volvo2 = GameObject.LoadFromObjFile("Models\\volvo 740 turbo.obj");
             for (int i = 0; i < 0; i++)
@@ -30,10 +29,9 @@ namespace ComponentBenchmark
             Meshes = list.Select(x => x.Mesh!).Where(x => x != null)!;
         }
 
-        [Benchmark]
         public void BeforeEachFast()
         {
-            List<GameObject> list = new List<GameObject>();
+            List<GameObject> list = [];
             GameObject volvo = GameObject.LoadFromObjFile("Models\\volvo 740 turbo.obj");
             GameObject volvo2 = GameObject.LoadFromObjFile("Models\\volvo 740 turbo.obj");
             for (int i = 0; i < 0; i++)

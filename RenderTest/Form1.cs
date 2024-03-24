@@ -1,5 +1,6 @@
 using ClosedGL;
 using ClosedGL.InputSystem;
+using ClosedGL.SMath;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Windows.Forms;
@@ -82,16 +83,16 @@ namespace RenderTest
 
             List<GameObject> gameObjects = [];
 
-            for (int x = 0; x < 30; x++)
-            {
-                for (int z = 0; z < 30; z++)
-                {
-                    GameObject g = new Cube();
-                    g.Position = new Vector3((x - 10) * 3, (z - 10) * 3, -15);
-                    g.Scale = new Vector3(3f);
-                    gameObjects.Add(g);
-                }
-            }
+            //for (int x = 0; x < 30; x++)
+            //{
+            //    for (int z = 0; z < 30; z++)
+            //    {
+            //        GameObject g = new Cube();
+            //        g.Position = new Vector3((x - 10) * 3, (z - 10) * 3, -15);
+            //        g.Scale = new Vector3(3f);
+            //        gameObjects.Add(g);
+            //    }
+            //}
 
             for (int x = 0; x < 30; x++)
             {
@@ -99,7 +100,7 @@ namespace RenderTest
                 {
                     GameObject g = new Cube();
                     g.Position = new Vector3((z - 10) * 3 , - 20, (x - 10) * 3);
-                    g.Scale = new Vector3(3f);
+                    g.Scale = new Vector3(3f, 4f, 3f);
                     gameObjects.Add(g);
                 }
             }
@@ -115,7 +116,7 @@ namespace RenderTest
             };
 
             camera.Initialize([house.Texture!]);
-
+            var perlin = new PerlinNoise(1);
             var t = new Thread(() =>
             {
                 pb = new MyPb();
@@ -137,7 +138,7 @@ namespace RenderTest
                 {
                     Input.Update();
                     sw.Stop();
-                    double deltaTime = (sw.ElapsedMilliseconds == 0 ? 1 : sw.ElapsedMilliseconds);
+                    float deltaTime = (sw.ElapsedMilliseconds == 0 ? 1 : sw.ElapsedMilliseconds);
                     sw.Restart();
                     double fps = 1000d / deltaTime;
                     FPS = (float)fps;
@@ -147,7 +148,7 @@ namespace RenderTest
                         lastFps.TryDequeue(out _);
                     }
                     x += .3f * (float)Math.Max(deltaTime / 1000d, 0.01d);
-                    deltaTime /= 1000d;
+                    deltaTime /= 1000f;
                     float speed = 2;
                     if (Input.IsKeyDown(Keys.W))
                     {
@@ -186,14 +187,18 @@ namespace RenderTest
                     MouseDelta.X = Input.GetMouseDeltaX();
                     MouseDelta.Y = Input.GetMouseDeltaY();
 
-                    MouseDelta *= 0.001f;
+                    MouseDelta *= deltaTime;
+                    MouseDelta /= 70;
 
-                    //foreach (var item in gameObjects)
-                    //{
-                    //    float sine = (float)Math.Sin(x * 4) / 2 - 1;
-                    //    item.Scale = new Vector3(3, 3, 3) / 2 * (float)Math.Clamp((sine + 2), 1.5d, 2d);
-                    //    item.Rotation = Quaternion.CreateFromYawPitchRoll((float)Math.Sin(x / 5) * 10, (float)Math.Sin(x / 5) * 10, (float)Math.Sin(x / 5) * 10);
-                    //}
+                    foreach (var item in gameObjects)
+                    {
+                        float sine = (float)Math.Sin(x * 4) / 2 - 1;
+                        //item.Scale = new Vector3(3, 3, 3) / 2 * (float)Math.Clamp((sine + 2), 1.5d, 2d);
+                        //item.Rotation = Quaternion.CreateFromYawPitchRoll((float)Math.Sin(x / 5) * 10, (float)Math.Sin(x / 5) * 10, (float)Math.Sin(x / 5) * 10);
+                        var temp = item.Position;
+                        temp.Y = -20 + perlin.Generate(temp.X / 30 + x, temp.Z / 30 + x) * 15;
+                        item.Position = temp;
+                    }
 
                     cameraVelocity *= 0.9d;
 
