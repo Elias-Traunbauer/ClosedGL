@@ -50,6 +50,22 @@ namespace ClosedGL.Memory
             return resultCasted;
         }
 
+        public static unsafe TDest[] CastArrayBeta<TSrc, TDest>(TSrc[] source) where TSrc : unmanaged where TDest : unmanaged
+        {
+            int sourceByteLength = source.Length * sizeof(TSrc);
+            int totalLength = source.Length;
+            int destLength = sourceByteLength / sizeof(TDest);
+            TDest[] resultCasted = new TDest[destLength];
+            fixed (TDest* destination = resultCasted)
+            {
+                fixed (TSrc* arrayPtr = source)
+                {
+                    Buffer.MemoryCopy(arrayPtr, destination, resultCasted.Length * sizeof(TSrc), resultCasted.Length * sizeof(TDest));
+                }
+            }
+            return resultCasted;
+        }
+
         public static unsafe TSrc[] FlattenArrays<TSrc, TObj>(IEnumerable<TObj> source, Func<TObj, TSrc[]> selector) where TSrc : unmanaged
         {
             int totalLength = source.Sum(x => selector(x).Length);

@@ -12,6 +12,7 @@ using System.Windows.Forms;
 using System.Xml.Linq;
 using TraunisExtensions;
 using VRageMath;
+using ILGPU.IR.Types;
 
 namespace ClosedGL
 {
@@ -22,8 +23,8 @@ namespace ClosedGL
     {
         const int TILE_SIZE = 8;
         const int TILE_SIZE_SQUARED = TILE_SIZE * TILE_SIZE;
-        const int TRIANGLE_SIZE_SPLIT_THRESHOLD = TILE_SIZE_SQUARED * 500 * 10000;
-        const int TRIANGLE_SIZE_SPLIT_4_THRESHOLD = TILE_SIZE_SQUARED * 1500 * 10000;
+        const int TRIANGLE_SIZE_SPLIT_THRESHOLD = TILE_SIZE_SQUARED * 10 * 10000;
+        const int TRIANGLE_SIZE_SPLIT_4_THRESHOLD = TILE_SIZE_SQUARED * 50 * 10000;
         const int TRIANGLE_BUFFER_PER_TILE = 500;
 
         #region boring
@@ -120,7 +121,7 @@ namespace ClosedGL
                                                                                                                                                            VariableView<Vec3> /*cameraPosition*/,
                                                                                                                                                                       VariableView<MatrixK> /*worldMatrix*/
                        > preProcessorKernel = null!;
-        
+
         // projection kernel
         private Action<
             Index1D /*triangleIndex*/,
@@ -147,7 +148,7 @@ namespace ClosedGL
         // tile kernel
         private Action<
             KernelConfig,
-            ArrayView<byte> /*frame*/,
+            ArrayView<Pixel> /*frame*/,
             ArrayView<float> /*depthBuffer*/,
             ArrayView<Vec2> /*uvs*/,
             ArrayView<Triangle> /*vertexBuffer*/,
@@ -161,7 +162,7 @@ namespace ClosedGL
 
 
         MemoryBuffer1D<byte, Stride1D.Dense> textureMemory = null!;
-        MemoryBuffer1D<byte, Stride1D.Dense> frameMemory = null!;
+        MemoryBuffer1D<Pixel, Stride1D.Dense> frameMemory = null!;
         MemoryBuffer1D<float, Stride1D.Dense> depthBufferMemory = null!;
         MemoryBuffer1D<Vec3, Stride1D.Dense> preBakedVectorsMemory = null!;
         MemoryBuffer1D<int, Stride1D.Dense> textureLengthsMemory = null!;
@@ -178,8 +179,8 @@ namespace ClosedGL
         public CameraGPUFragmentedTiledExplicitGrouping()
         {
             bool includeCPU = true;
-            bool debug = false; 
-            
+            bool debug = false;
+
             context = Context.CreateDefault();
             if (debug)
             {
@@ -324,7 +325,7 @@ namespace ClosedGL
             VariableView<int> /*tileSize*/>(BinningKernel);
 
             tileKernel = accelerator.LoadStreamKernel<
-                ArrayView<byte> /*frame*/,
+                ArrayView<Pixel> /*frame*/,
                 ArrayView<float> /*depthBuffer*/,
                 ArrayView<Vec2> /*uvs*/,
                 ArrayView<Triangle> /*vertexBuffer*/,
@@ -334,23 +335,23 @@ namespace ClosedGL
                 ArrayView<int> /*textureHeights*/,
                 ArrayView<byte> /*textures*/,
                 VariableView<Vec3> /*renderResoultion*/,
-                VariableView < int > /*tileSize*/> (TileKernel);
+                VariableView<int> /*tileSize*/>(TileKernel);
 
             // allocate memory for textures
             int totalTextureLength = textures.Sum(x => x.Data.Length);
 
             int tileCount = (int)RenderResolution.X / TILE_SIZE * (int)RenderResolution.Y / TILE_SIZE;
 
-            textureMemory =         AllocateConstant<byte>(totalTextureLength);
-            frameMemory =           AllocateConstant<byte>((int)RenderResolution.X * (int)RenderResolution.Y * 4);
-            depthBufferMemory =     AllocateConstant<float>((int)RenderResolution.X * (int)RenderResolution.Y);
+            textureMemory = AllocateConstant<byte>(totalTextureLength);
+            frameMemory = AllocateConstant<Pixel>((int)RenderResolution.X * (int)RenderResolution.Y/* * 4*/);
+            depthBufferMemory = AllocateConstant<float>((int)RenderResolution.X * (int)RenderResolution.Y);
             preBakedVectorsMemory = AllocateConstant<Vec3>(2);
-            textureLengthsMemory =  AllocateConstant<int>(textures.Length);
-            textureWidthsMemory =   AllocateConstant<int>(textures.Length);
-            textureHeightsMemory =  AllocateConstant<int>(textures.Length);
-          trianglesPerTextureMemory=AllocateConstant<int>(textures.Length);
-            vertexBufferMemory =    AllocateConstant<Triangle>(10_000_000);
-            uvIndicesMemory =       AllocateConstant<int>((int)RenderResolution.X * (int)RenderResolution.Y);
+            textureLengthsMemory = AllocateConstant<int>(textures.Length);
+            textureWidthsMemory = AllocateConstant<int>(textures.Length);
+            textureHeightsMemory = AllocateConstant<int>(textures.Length);
+            trianglesPerTextureMemory = AllocateConstant<int>(textures.Length);
+            vertexBufferMemory = AllocateConstant<Triangle>(10_000_000);
+            uvIndicesMemory = AllocateConstant<int>((int)RenderResolution.X * (int)RenderResolution.Y);
             tileTriangleIndices = AllocateConstant<int>(tileCount * TRIANGLE_BUFFER_PER_TILE);
             tileTriangleCounts = AllocateConstant<int>(tileCount);
 
@@ -658,7 +659,7 @@ namespace ClosedGL
         }
 
         public static void TileKernel(
-            ArrayView<byte> frame,
+            ArrayView<Pixel> frame,
             ArrayView<float> depthBuffer,
             ArrayView<Vec2> uvs,
             ArrayView<Triangle> vertexBuffer,
@@ -720,8 +721,8 @@ namespace ClosedGL
                         continue;
                     }
 
-                    Vec2 pixel = new Vec2(x, y);
-                    bool didapixel = false;
+                    Vec2 pixel = new(x, y);
+
                     for (int i = 0; i < projectedTrianglesInThisTileCount; i++)
                     {
                         int triangleIndex = tileTriangleIndexBuffer[projectedTrianglesStartIndex + i];
@@ -730,68 +731,66 @@ namespace ClosedGL
 
                         // calculate the barycentric coordinates
                         Vec3 barycentric = CalculateBarycentricCoordinatesKernel(pixel, triangle.A, triangle.B, triangle.C);
+                        //Vec3 barycentric = new Vec3(0.3f, 0.3f, 0.3f);
 
                         // Depth test
                         float depth = barycentric.x * triangle.v1Distance + barycentric.y * triangle.v2Distance + barycentric.z * triangle.v3Distance;
-                        depth =  - depth;
+                        depth = -depth;
                         int depthIndex = x + (int)renderResoultion.Value.x * y;
-                        if (depth < depthBuffer[depthIndex] && depthBuffer[depthIndex] != 0)
+                        float depthBufferAtIndex = depthBuffer[depthIndex];
+                        if (depth < depthBufferAtIndex && depthBufferAtIndex != 0)
                         {
                             continue;
                         }
 
-                        if (IsPointInTriangleKernel(pixel, triangle.A, triangle.B, triangle.C))
+                        if (!IsPointInTriangleKernel(pixel, triangle.A, triangle.B, triangle.C) /*false*/)
                         {
-                            bool enoughUVs = triangle.uvIndex3 < uvs.Length;
-
-                            Vec2 uv1 = enoughUVs ? uvs[triangle.uvIndex1] : new Vec2(0, 0);
-                            Vec2 uv2 = enoughUVs ? uvs[triangle.uvIndex2] : new Vec2(1, 0);
-                            Vec2 uv3 = enoughUVs ? uvs[triangle.uvIndex3] : new Vec2(0, 1);
-
-                            // Interpolate UVs
-                            Vec2 uv = InterpolateUVKernel(barycentric, uv1, uv2, uv3);
-
-                            depthBuffer[depthIndex] = depth;
-
-                            // Get the color from the texture
-
-                            int textureIndex = triangle.textureIndex;
-
-                            int texturePixelX = (int)(uv.x * textureWidths[textureIndex]);
-                            int texturePixelY = (int)(uv.y * textureHeights[textureIndex]);
-
-                            // clamp the texture pixel coordinates
-                            texturePixelX = XMath.Max(0, XMath.Min(texturePixelX, textureWidths[textureIndex] - 1));
-                            texturePixelY = XMath.Max(0, XMath.Min(texturePixelY, textureHeights[textureIndex] - 1));
-
-                            int texturePixelIndex = texturePixelY * textureWidths[textureIndex] + texturePixelX;
-
-                            int textureOffset = 0;
-
-                            for (int j = 0; j < textureIndex; j++)
-                            {
-                                textureOffset += textureWidths[j] * textureHeights[j] * bytesPerPixel;
-                            }
-
-                            int frameIndex = pixelIndex * bytesPerPixel;
-                            texturePixelIndex *= bytesPerPixel;
-
-                            frame[frameIndex + 0] = textures[texturePixelIndex + textureOffset + 0];
-                            frame[frameIndex + 1] = textures[texturePixelIndex + textureOffset + 1];
-                            frame[frameIndex + 2] = textures[texturePixelIndex + textureOffset + 2];
-                            frame[frameIndex + 3] = textures[texturePixelIndex + textureOffset + 3];
-
-                            didapixel = true;
+                            continue;
                         }
-                    }
-                    if (!didapixel)
-                    {
-                        int frameIndex = pixelIndex * bytesPerPixel;
+                        bool enoughUVs = triangle.uvIndex3 < uvs.Length;
 
-                        //frame[frameIndex + 0] = 0;
-                        //frame[frameIndex + 1] = 255;
-                        //frame[frameIndex + 2] = 0;
-                        //frame[frameIndex + 3] = 255;
+                        Vec2 uv1 = enoughUVs ? uvs[triangle.uvIndex1] : new Vec2(0, 0);
+                        Vec2 uv2 = enoughUVs ? uvs[triangle.uvIndex2] : new Vec2(1, 0);
+                        Vec2 uv3 = enoughUVs ? uvs[triangle.uvIndex3] : new Vec2(0, 1);
+
+                        // Interpolate UVs
+                        Vec2 uv = InterpolateUVKernel(barycentric, uv1, uv2, uv3);
+                        //Vec2 uv = new Vec2(0, 0);
+
+                        depthBuffer[depthIndex] = depth;
+
+                        // Get the color from the texture
+
+                        int textureIndex = triangle.textureIndex;
+
+                        int texturePixelX = (int)(uv.x * textureWidths[textureIndex]);
+                        int texturePixelY = (int)(uv.y * textureHeights[textureIndex]);
+
+                        // clamp the texture pixel coordinates
+                        texturePixelX = XMath.Max(0, XMath.Min(texturePixelX, textureWidths[textureIndex] - 1));
+                        texturePixelY = XMath.Max(0, XMath.Min(texturePixelY, textureHeights[textureIndex] - 1));
+
+                        int texturePixelIndex = texturePixelY * textureWidths[textureIndex] + texturePixelX;
+
+                        int textureOffset = 0;
+
+                        for (int j = 0; j < textureIndex; j++)
+                        {
+                            textureOffset += textureWidths[j] * textureHeights[j] * bytesPerPixel;
+                        }
+
+                        int frameIndex = pixelIndex/* * bytesPerPixel*/;
+                        texturePixelIndex *= bytesPerPixel;
+
+                        byte a, r, g, b;
+                        a = textures[texturePixelIndex + textureOffset + 3];
+                        r = textures[texturePixelIndex + textureOffset + 0];
+                        g = textures[texturePixelIndex + textureOffset + 1];
+                        b = textures[texturePixelIndex + textureOffset + 2];
+
+                        Pixel pixel1 = new Pixel(r, g, b, a);
+
+                        frame[frameIndex + 0] = pixel1;
                     }
                 }
             }
@@ -1118,7 +1117,7 @@ namespace ClosedGL
             RecordTime("projection_setup");
 
             projectionKernel(
-                (int)Math.Ceiling(coresToUseProjection)  + 1,            /*triangleIndex*/
+                (int)Math.Ceiling(coresToUseProjection) + 1,            /*triangleIndex*/
                 triangleCountProjectionView,
                 projectedVerticesCounterView,                    /*projectedVerticesNextIndex*/
                 svertexBufferMemory.View,            /*vertices*/
@@ -1149,6 +1148,7 @@ namespace ClosedGL
             trianglesPerCore = XMath.Max(trianglesPerCore, 1);
 
             gpuCores = (int)Math.Min(gpuCores, triangleCount);
+
             debugValues.Add("TrianglesPerCore", trianglesPerCore);
             debugValues.Add("binningGPUCores", gpuCores);
 
@@ -1157,7 +1157,7 @@ namespace ClosedGL
             //triangleCountMemory.CopyFromCPU([1]);
             var triangleCountView = triangleCountMemory.View.VariableView(0);
 
-            double gpuCoresTiling = accelerator.MaxNumThreads/* * (.8f + ((crazy % 1000) / 1000) * 5)*/;
+            double gpuCoresTiling = accelerator.MaxNumThreads * 2/* * (.8f + ((crazy % 1000) / 1000) * 5)*/;
             debugValues.Add("crazy", crazy);
             debugValues.Add("tileGPUCores", gpuCoresTiling);
             var tileSizeMemory = AllocateLocal<int>(1);
@@ -1195,7 +1195,7 @@ namespace ClosedGL
             accelerator.DefaultStream.Synchronize();
             RecordTime("binning_kernel");
 
-            var blockSize = new Index1D(128); // For example, 256 threads per block
+            var blockSize = new Index1D(512); // For example, 256 threads per block
 
             // Calculating grid size based on total tile count
             var gridDim = (tileCount + blockSize - 1) / blockSize;
@@ -1222,14 +1222,11 @@ namespace ClosedGL
             profilingStopwatch.Restart();
             unsafe
             {
-                int bytesPerPixel = 4;
                 memoryAllocationStopwatch.Start();
-                byte[] image = new byte[(int)RenderResolution.X * (int)RenderResolution.Y * bytesPerPixel];
+                Pixel[] pixels1 = new Pixel[(int)RenderResolution.X * (int)RenderResolution.Y];
                 memoryAllocationStopwatch.Stop();
-                fixed (byte* ptr = image)
-                {
-                    frameMemory.CopyToCPU(image);
-                }
+                frameMemory.CopyToCPU(pixels1);
+                byte[] image = UnsafeArrayHandler.CastArrayBeta<Pixel, byte>(pixels1);
 
                 swapChain.Enqueue(image);
             }
@@ -1527,5 +1524,18 @@ namespace ClosedGL
             return wA >= 0 && wB >= 0 && wC >= 0;
         }
         #endregion
+    }
+
+    public struct Pixel
+    {
+        byte R, G, B, A;
+
+        public Pixel(byte r, byte g, byte b, byte a)
+        {
+            R = r;
+            G = g;
+            B = b;
+            A = a;
+        }
     }
 }

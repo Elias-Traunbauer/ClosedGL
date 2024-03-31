@@ -1,6 +1,7 @@
 using ClosedGL;
 using ClosedGL.InputSystem;
 using ClosedGL.SMath;
+using ILGPU.Algorithms;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Windows.Forms;
@@ -118,7 +119,8 @@ namespace RenderTest
             IRenderer camera = new CameraGPUFragmentedTiledExplicitGrouping()
             {
                 FieldOfView = 70f,
-                Position = new Vector3(0, 0, 40),
+                Position = new Vector3(40, 150, 100),
+                Rotation = Quaternion.CreateFromYawPitchRoll(0, XMath.DegToRad(360 - 80), 0),
                 RenderResolution = new Vector2I(Width, Height),
             };
 
@@ -300,7 +302,7 @@ namespace RenderTest
                     //cub1.Position = cudddbPos + Vector3.Left * 20;
                     //cub1.Scale = new Vector3(7);
                     //cub1.Rotation = Quaternion.CreateFromYawPitchRoll(0, (float)Math.Sin(x), 0);
-
+                    volvo.Position = new Vector3(0, 50, 0) + Vector3.Up * (float)(Math.Cos(x) * 10);
                     volvo.Rotation = Quaternion.CreateFromYawPitchRoll((float)Math.Sin(x) * 3, 0, 0);
 
                     cubi.Position = new Vector3(frameCount % 220f - 110, 19, -2);
@@ -318,14 +320,15 @@ namespace RenderTest
 
                     //cub.Rotation = Quaternion.CreateFromYawPitchRoll(x, x, x);
                     camera.RenderResolution = new Vector2I(Width, Height);
+                    volvo2.Rotation = Quaternion.CreateFromYawPitchRoll((float)Math.Sin(x / 10) * 30, (float)Math.Sin(x / 10) * 20, (float)Math.Sin(x / 10) * 10);
+
                     renderStopwatch.Restart();
                     //var res = camera.Render([go, cub, cub1, .. gameObjects/*, cubi,..   /*house*/]);
                     //var res = camera.Render(new List<GameObject>() { go, cub, cub1, }.Concat(gameObjects).ToList());
                     //var res = camera.Render([go, cub, cub1, .. gameObjects]);
 
-                    volvo2.Rotation = Quaternion.CreateFromYawPitchRoll((float)Math.Sin(x / 10) * 30, (float)Math.Sin(x / 10) * 20, (float)Math.Sin(x / 10) * 10);
 
-                    var res = camera.Render([/*house, , volvo2*/ /*volvo , */ /*cub1, */ /*volvo, volvo2*/ cub, cub1, .. gameObjects]);
+                    var res = camera.Render([volvo,/*house, , volvo2*/ /*volvo , */ /*cub1, */ /*volvo, volvo2*/ cub, cub1, .. gameObjects]);
                     renderStopwatch.Stop();
 
                     //foreach (var item in res.Keys.Reverse())
