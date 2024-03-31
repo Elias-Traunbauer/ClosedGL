@@ -78,6 +78,37 @@ namespace ClosedGL.SMath
                 v);
         }
 
+        public float Generate01(float x, float y)
+        {
+            // Compute the cell coordinates
+            int x0 = x > 0.0 ? (int)x : (int)x - 1;
+            int y0 = y > 0.0 ? (int)y : (int)y - 1;
+
+            // Relative x, y in cell
+            x -= x0;
+            y -= y0;
+
+            // Wrap the integer cells at 255 (smaller integer period can be introduced here)
+            x0 &= 255;
+            y0 &= 255;
+
+            // Calculate noise contributions from each of the four corners
+            float n00 = Dot(Gradients[_permutations[x0 + _permutations[y0]] % 8], x, y);
+            float n01 = Dot(Gradients[_permutations[x0 + _permutations[y0 + 1]] % 8], x, y - 1);
+            float n10 = Dot(Gradients[_permutations[x0 + 1 + _permutations[y0]] % 8], x - 1, y);
+            float n11 = Dot(Gradients[_permutations[x0 + 1 + _permutations[y0 + 1]] % 8], x - 1, y - 1);
+
+            // Smooth the noise with a fade function
+            float u = Fade(x);
+            float v = Fade(y);
+
+            // Interpolate the four results
+            return Lerp(
+                               Lerp(n00, n10, u),
+                                              Lerp(n01, n11, u),
+                                                             v) * 0.5f + 0.5f;
+        }
+
         private float Dot(float[] g, float x, float y)
         {
             return g[0] * x + g[1] * y;

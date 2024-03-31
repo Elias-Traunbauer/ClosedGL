@@ -530,7 +530,7 @@ namespace ClosedGL
 
         public void Initialize(Texture[] textures)
         {
-            throw new NotImplementedException();
+            
         }
     }
 }

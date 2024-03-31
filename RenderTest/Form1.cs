@@ -80,6 +80,7 @@ namespace RenderTest
             cubi.Scale = new Vector3(5f);
 
             cub1.Position = new Vector3(30, 0, 0);
+            cub1.Scale = new Vector3(5f);
 
             List<GameObject> gameObjects = [];
 
@@ -94,9 +95,9 @@ namespace RenderTest
             //    }
             //}
 
-            for (int x = 0; x < 30; x++)
+            for (int x = 0; x < 60; x++)
             {
-                for (int z = 0; z < 30; z++)
+                for (int z = 0; z < 60; z++)
                 {
                     GameObject g = new Cube();
                     g.Position = new Vector3((z - 10) * 3 , - 20, (x - 10) * 3);
@@ -108,7 +109,13 @@ namespace RenderTest
             Vector3D cameraVelocity = Vector3.Zero;
 
             go.Scale = new Vector3(7);
-            IRenderer camera = new CameraGPUFragmentedTiled()
+            //IRenderer camera = new CameraGPUFragmentedTiledExplicitGrouping()
+            //{
+            //    FieldOfView = 70f,
+            //    Position = new Vector3(0, 0, 40),
+            //    RenderResolution = new Vector2I(Width, Height),
+            //};
+            IRenderer camera = new CameraGPUFragmentedTiledExplicitGrouping()
             {
                 FieldOfView = 70f,
                 Position = new Vector3(0, 0, 40),
@@ -125,19 +132,40 @@ namespace RenderTest
                     new Vector3(200, 10, 200),
                     new Vector3(100, 10, 100),
                 ]);
-                //,
-                //[
-                //    0.16f * 0,
-                //    0.16f * 1,
-                //    0.16f * 2,
-                //    0.16f * 3,
-                //    0.16f * 4,
-                //    0.16f * 5,
-                //    1,
-                //]);
+            //,
+            //[
+            //    0.16f * 0,
+            //    0.16f * 1,
+            //    0.16f * 2,
+            //    0.16f * 3,
+            //    0.16f * 4,
+            //    0.16f * 5,
+            //    1,
+            //]);
+
+            Lerpy<Vector3> lerpyVecN = new(
+                [
+                    new Vector3(100, 10, 100),
+                    new Vector3(150, 30, 100),
+                    new Vector3(200, 10, 100),
+                    new Vector3(200, 10, 150),
+                    new Vector3(200, 30, 200),
+                    new Vector3(200, 10, 200),
+                    new Vector3(100, 10, 100),
+                ]
+            ,
+            [
+                0.16f * 0,
+                0.16f * 1,
+                0.16f * 2,
+                0.16f * 3,
+                0.16f * 4,
+                0.16f * 5,
+                1,
+            ]);
 
 
-            Lerpy <Quaternion> lerpyQ = new(
+            Lerpy<Quaternion> lerpyQ = new(
                 [
                     Quaternion.CreateFromYawPitchRoll(0, 0, 0),
                     Quaternion.CreateFromYawPitchRoll(180, 0, 0),
@@ -219,7 +247,8 @@ namespace RenderTest
 
                     MouseDelta *= deltaTime;
                     MouseDelta /= 70;
-                    cub.Position = lerpyVec.GetValue(x / 2) / 2;
+                    cub.Position = lerpyVec.GetValue(x / 4) / 2;
+                    cub1.Position = lerpyVecN.GetValue(x / 4) / 2;
                     //camera.Rotation = lerpyQ.GetValue(x / 10);
 
                     foreach (var item in gameObjects)
@@ -227,15 +256,13 @@ namespace RenderTest
                         float sine = (float)Math.Sin(x * 4) / 2 - 1;
                         //item.Scale = new Vector3(3, 3, 3) / 2 * (float)Math.Clamp((sine + 2), 1.5d, 2d);
                         //item.Rotation = Quaternion.CreateFromYawPitchRoll((float)Math.Sin(x / 5) * 10, (float)Math.Sin(x / 5) * 10, (float)Math.Sin(x / 5) * 10);
+                        var temp = item.Position;
+                        temp.Y = (float)(-20 + Math.Pow(perlin.Generate01(temp.X / 50/* + x*/, temp.Z / 50 + x) * 10, 2));
+                        item.Position = temp;
 
-
-                        //var temp = item.Position;
-                        //temp.Y = -20 + perlin.Generate(temp.X / 30 + x, temp.Z / 30 + x) * 15;
-                        //item.Position = temp;
-
-                        var scale = item.Scale;
-                        scale.Y = 10 + perlin.Generate(item.Position.X / 30 + x, item.Position.Z / 30 + x) * 15;
-                        item.Scale = scale;
+                        //var scale = item.Scale;
+                        //scale.Y = 10 + perlin.Generate(item.Position.X / 30 + x, item.Position.Z / 30 + x) * 15;
+                        //item.Scale = scale;
                     }
 
                     cameraVelocity *= 0.9d;
@@ -298,7 +325,7 @@ namespace RenderTest
 
                     volvo2.Rotation = Quaternion.CreateFromYawPitchRoll((float)Math.Sin(x / 10) * 30, (float)Math.Sin(x / 10) * 20, (float)Math.Sin(x / 10) * 10);
 
-                    var res = camera.Render([/*house, , volvo2*/ /*volvo , */ /*cub1, */ /*volvo, volvo2*/ cub, .. gameObjects]);
+                    var res = camera.Render([/*house, , volvo2*/ /*volvo , */ /*cub1, */ /*volvo, volvo2*/ cub, cub1, .. gameObjects]);
                     renderStopwatch.Stop();
 
                     //foreach (var item in res.Keys.Reverse())

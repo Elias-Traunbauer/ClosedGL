@@ -18,7 +18,7 @@ namespace ClosedGL
     /// <summary>
     /// Class to project points from a position onto an lcd
     /// </summary>
-    public class CameraGPUFragmentedTiled : GameObject, IRenderer
+    public class CameraGPUFragmentedTiledExplicitGrouping : GameObject, IRenderer
     {
         const int TILE_SIZE = 8;
         const int TILE_SIZE_SQUARED = TILE_SIZE * TILE_SIZE;
@@ -146,7 +146,7 @@ namespace ClosedGL
 
         // tile kernel
         private Action<
-            Index1D /*index*/,
+            KernelConfig,
             ArrayView<byte> /*frame*/,
             ArrayView<float> /*depthBuffer*/,
             ArrayView<Vec2> /*uvs*/,
@@ -175,7 +175,7 @@ namespace ClosedGL
         #endregion
 
         #region constructor/deconstructor
-        public CameraGPUFragmentedTiled()
+        public CameraGPUFragmentedTiledExplicitGrouping()
         {
             bool includeCPU = true;
             bool debug = false; 
@@ -245,7 +245,7 @@ namespace ClosedGL
             accelerator = device!.CreateAccelerator(context);
         }
 
-        ~CameraGPUFragmentedTiled()
+        ~CameraGPUFragmentedTiledExplicitGrouping()
         {
             accelerator.Dispose();
             context.Dispose();
@@ -323,8 +323,7 @@ namespace ClosedGL
                 VariableView<Vec3> /*renderResoultion*/,
             VariableView<int> /*tileSize*/>(BinningKernel);
 
-            tileKernel = accelerator.LoadAutoGroupedStreamKernel<
-                Index1D /*index*/,
+            tileKernel = accelerator.LoadStreamKernel<
                 ArrayView<byte> /*frame*/,
                 ArrayView<float> /*depthBuffer*/,
                 ArrayView<Vec2> /*uvs*/,
@@ -659,7 +658,6 @@ namespace ClosedGL
         }
 
         public static void TileKernel(
-            Index1D index,
             ArrayView<byte> frame,
             ArrayView<float> depthBuffer,
             ArrayView<Vec2> uvs,
@@ -673,10 +671,19 @@ namespace ClosedGL
                 VariableView<int> tileSize
             )
         {
+            var absoluteThreadIdx = Grid.GlobalIndex.X;
+
+            int totalTiles = (int)renderResoultion.Value.x / tileSize.Value * (int)renderResoultion.Value.y / tileSize.Value;
+
+            if (absoluteThreadIdx >= totalTiles)
+            {
+                return;
+            }
+
             int TILE_SIZE = tileSize.Value;
             Vec2 res = new Vec2(renderResoultion.Value.x, renderResoultion.Value.y);
 
-            int tileIndex = index;
+            int tileIndex = absoluteThreadIdx;
 
             int tilesPerRow = (int)renderResoultion.Value.x / TILE_SIZE;
 
@@ -1150,7 +1157,7 @@ namespace ClosedGL
             //triangleCountMemory.CopyFromCPU([1]);
             var triangleCountView = triangleCountMemory.View.VariableView(0);
 
-            double gpuCoresTiling = accelerator.MaxNumThreads * (.8f + ((crazy % 1000) / 1000) * 5);
+            double gpuCoresTiling = accelerator.MaxNumThreads/* * (.8f + ((crazy % 1000) / 1000) * 5)*/;
             debugValues.Add("crazy", crazy);
             debugValues.Add("tileGPUCores", gpuCoresTiling);
             var tileSizeMemory = AllocateLocal<int>(1);
@@ -1188,9 +1195,15 @@ namespace ClosedGL
             accelerator.DefaultStream.Synchronize();
             RecordTime("binning_kernel");
 
+            var blockSize = new Index1D(128); // For example, 256 threads per block
+
+            // Calculating grid size based on total tile count
+            var gridDim = (tileCount + blockSize - 1) / blockSize;
+            var kernelConfig = new KernelConfig(gridDim, blockSize);
+
             profilingStopwatch.Restart();
             tileKernel(
-                tileCount,                      /*index*/
+                kernelConfig,
                 frameMemory.View,               /*frame*/
                 depthBufferMemory.View,         /*depthBuffer*/
                 uvsMemory.View,                 /*uvs*/
@@ -1514,106 +1527,5 @@ namespace ClosedGL
             return wA >= 0 && wB >= 0 && wC >= 0;
         }
         #endregion
-    }
-
-    public struct Triangle
-    {
-        public Vec2 A;
-        public Vec2 B;
-        public Vec2 C;
-
-        public float v1Distance;
-        public float v2Distance;
-        public float v3Distance;
-
-        public int textureIndex;
-
-        public int uvIndex1;
-        public int uvIndex2;
-        public int uvIndex3;
-
-        public Triangle(Vec3 v1, Vec3 v2, Vec3 v3, int textureIndex, int uvIndex1, int uvIndex2, int uvIndex3)
-        {
-            this.A = new Vec2(v1.x, v1.y);
-            this.B = new Vec2(v2.x, v2.y);
-            this.C = new Vec2(v3.x, v3.y);
-            this.v1Distance = v1.z;
-            this.v2Distance = v2.z;
-            this.v3Distance = v3.z;
-            this.textureIndex = textureIndex;
-            this.uvIndex1 = uvIndex1;
-            this.uvIndex2 = uvIndex2;
-            this.uvIndex3 = uvIndex3;
-        }
-
-        public Triangle(Vec2 v1, Vec2 v2, Vec2 v3, int textureIndex, int uvIndex1, int uvIndex2, int uvIndex3, float distance1, float distance2, float distance3)
-        {
-            this.A = v1;
-            this.B = v2;
-            this.C = v3;
-            this.v1Distance = distance1;
-            this.v2Distance = distance2;
-            this.v3Distance = distance3;
-            this.textureIndex = textureIndex;
-            this.uvIndex1 = uvIndex1;
-            this.uvIndex2 = uvIndex2;
-            this.uvIndex3 = uvIndex3;
-        }
-
-        // Splits the triangle into four smaller triangles
-        public Triangle[] Split()
-        {
-            return Split(TriangleSplitAmount.Four);
-            Vec2 D = CameraGPUFragmentedTiled.Midpoint(A, B);
-            Vec2 E = CameraGPUFragmentedTiled.Midpoint(B, C);
-            Vec2 F = CameraGPUFragmentedTiled.Midpoint(C, A);
-
-            return [
-            new Triangle(A, D, F, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
-            new Triangle(D, B, E, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
-            new Triangle(F, E, C, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
-            new Triangle(D, E, F, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance)
-            ];
-        }
-
-        // Splits the triangle into four smaller triangles
-        public Triangle[] Split(TriangleSplitAmount parts)
-        {
-            Vec2 AB = CameraGPUFragmentedTiled.Midpoint(A, B);
-            Vec2 BC = CameraGPUFragmentedTiled.Midpoint(B, C);
-            Vec2 AC = CameraGPUFragmentedTiled.Midpoint(A, C);
-
-            Vec2 Z = (A + B + C) / 3;
-
-            //if (parts == TriangleSplitAmount.Eight)
-            //{
-            //    Vec2 G = CameraGPUFragmentedTiled.Midpoint(D, E);
-
-            //    return [
-            //        new Triangle(A, D, F, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
-            //        new Triangle(D, G, F, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
-            //        new Triangle(G, E, F, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
-            //        new Triangle(D, B, G, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
-            //        new Triangle(G, B, E, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
-            //        new Triangle(F, E, C, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
-            //        new Triangle(G, E, C, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance)
-            //    ];
-            //}
-
-            return [
-                new Triangle(A, Z, AC, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
-                new Triangle(A, AB, Z, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
-                new Triangle(AB, B, Z, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
-                new Triangle(Z, B, BC, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
-                new Triangle(Z, BC, C, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance),
-                new Triangle(AC, Z, C, textureIndex, uvIndex1, uvIndex2, uvIndex3, v1Distance, v2Distance, v3Distance)
-            ];
-        }
-
-        public enum TriangleSplitAmount
-        {
-            Four,
-            Eight
-        }
     }
 }
