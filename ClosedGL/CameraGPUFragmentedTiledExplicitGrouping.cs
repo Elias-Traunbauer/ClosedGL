@@ -156,12 +156,12 @@ namespace ClosedGL
             ArrayView<int> /*tileTriangleCountBuffer*/,
             ArrayView<int> /*textureWidths*/,
             ArrayView<int> /*textureHeights*/,
-            ArrayView<byte> /*textures*/,
+            ArrayView<Pixel> /*textures*/,
             VariableView<Vec3> /*renderResoultion*/,
             VariableView<int> /*tileSize*/> tileKernel = null!;
 
 
-        MemoryBuffer1D<byte, Stride1D.Dense> textureMemory = null!;
+        MemoryBuffer1D<Pixel, Stride1D.Dense> textureMemory = null!;
         MemoryBuffer1D<Pixel, Stride1D.Dense> frameMemory = null!;
         MemoryBuffer1D<float, Stride1D.Dense> depthBufferMemory = null!;
         MemoryBuffer1D<Vec3, Stride1D.Dense> preBakedVectorsMemory = null!;
@@ -333,16 +333,16 @@ namespace ClosedGL
                 ArrayView<int> /*tileTriangleCountBuffer*/,
                 ArrayView<int> /*textureWidths*/,
                 ArrayView<int> /*textureHeights*/,
-                ArrayView<byte> /*textures*/,
+                ArrayView<Pixel> /*textures*/,
                 VariableView<Vec3> /*renderResoultion*/,
                 VariableView<int> /*tileSize*/>(TileKernel);
 
             // allocate memory for textures
-            int totalTextureLength = textures.Sum(x => x.Data.Length);
+            int totalTextureLength = textures.Sum(x => x.Data.Length) / 4;
 
             int tileCount = (int)RenderResolution.X / TILE_SIZE * (int)RenderResolution.Y / TILE_SIZE;
 
-            textureMemory = AllocateConstant<byte>(totalTextureLength);
+            textureMemory = AllocateConstant<Pixel>(totalTextureLength);
             frameMemory = AllocateConstant<Pixel>((int)RenderResolution.X * (int)RenderResolution.Y/* * 4*/);
             depthBufferMemory = AllocateConstant<float>((int)RenderResolution.X * (int)RenderResolution.Y);
             preBakedVectorsMemory = AllocateConstant<Vec3>(2);
@@ -355,8 +355,9 @@ namespace ClosedGL
             tileTriangleIndices = AllocateConstant<int>(tileCount * TRIANGLE_BUFFER_PER_TILE);
             tileTriangleCounts = AllocateConstant<int>(tileCount);
 
-            textureMemory.CopyFromCPU(textures.SelectMany(x => x.Data).ToArray());
-            textureLengthsMemory.CopyFromCPU(textures.Select(x => x.Data.Length).ToArray());
+            Pixel[] texturesCasted = UnsafeArrayHandler.CastArrayBeta<byte, Pixel>(textures.SelectMany(x => x.Data).ToArray());
+            textureMemory.CopyFromCPU(texturesCasted);
+            textureLengthsMemory.CopyFromCPU(textures.Select(x => x.Data.Length / 4).ToArray());
             textureWidthsMemory.CopyFromCPU(textures.Select(x => x.Width).ToArray());
             textureHeightsMemory.CopyFromCPU(textures.Select(x => x.Height).ToArray());
             trianglesPerTextureMemory.CopyFromCPU(textures.Select(x => x.Data.Length / 4).ToArray());
@@ -667,7 +668,7 @@ namespace ClosedGL
             ArrayView<int> tileTriangleCountBuffer,
             ArrayView<int> textureWidths,
             ArrayView<int> textureHeights,
-            ArrayView<byte> textures,
+            ArrayView<Pixel> textures,
             VariableView<Vec3> renderResoultion,
                 VariableView<int> tileSize
             )
@@ -697,15 +698,13 @@ namespace ClosedGL
             int tileEndX = tileStartX + TILE_SIZE;
             int tileEndY = tileStartY + TILE_SIZE;
 
-            int stride = (int)renderResoultion.Value.x * bytesPerPixel;
-
             int projectedTrianglesInThisTileCount = tileTriangleCountBuffer[tileIndex];
 
             if (projectedTrianglesInThisTileCount == 0)
             {
                 return;
             }
-
+            Triangle[] triangleBufferLocal = new Triangle[TRIANGLE_BUFFER_PER_TILE];
             int projectedTrianglesStartIndex = tileIndex * TRIANGLE_BUFFER_PER_TILE;
 
             for (int y = tileStartY; y < tileEndY; y++)
@@ -776,19 +775,19 @@ namespace ClosedGL
 
                         for (int j = 0; j < textureIndex; j++)
                         {
-                            textureOffset += textureWidths[j] * textureHeights[j] * bytesPerPixel;
+                            textureOffset += textureWidths[j] * textureHeights[j]/* * bytesPerPixel*/;
                         }
 
                         int frameIndex = pixelIndex/* * bytesPerPixel*/;
-                        texturePixelIndex *= bytesPerPixel;
+                        //texturePixelIndex *= bytesPerPixel;
 
-                        byte a, r, g, b;
-                        a = textures[texturePixelIndex + textureOffset + 3];
-                        r = textures[texturePixelIndex + textureOffset + 0];
-                        g = textures[texturePixelIndex + textureOffset + 1];
-                        b = textures[texturePixelIndex + textureOffset + 2];
+                        // rgba
+                        //a = 255;
+                        //r = 255;
+                        //g = 255;
+                        //b = 255;
 
-                        Pixel pixel1 = new Pixel(r, g, b, a);
+                        Pixel pixel1 = textures[texturePixelIndex + textureOffset + 0];
 
                         frame[frameIndex + 0] = pixel1;
                     }
@@ -1223,9 +1222,8 @@ namespace ClosedGL
             unsafe
             {
                 memoryAllocationStopwatch.Start();
-                Pixel[] pixels1 = new Pixel[(int)RenderResolution.X * (int)RenderResolution.Y];
+                Pixel[] pixels1 = frameMemory.GetAsArray1D();
                 memoryAllocationStopwatch.Stop();
-                frameMemory.CopyToCPU(pixels1);
                 byte[] image = UnsafeArrayHandler.CastArrayBeta<Pixel, byte>(pixels1);
 
                 swapChain.Enqueue(image);

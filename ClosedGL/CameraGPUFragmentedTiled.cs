@@ -1516,21 +1516,26 @@ namespace ClosedGL
         #endregion
     }
 
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct Triangle
     {
-        public Vec2 A;
-        public Vec2 B;
-        public Vec2 C;
+        public Vec2 A; // 8 bytes
+        public Vec2 B; // 8 bytes
+        public Vec2 C; // 8 bytes
 
-        public float v1Distance;
-        public float v2Distance;
-        public float v3Distance;
+        public float v1Distance;  // 4 bytes
+        public float v2Distance;  // 4 bytes
+        public float v3Distance;  // 4 bytes
 
-        public int textureIndex;
+        public int textureIndex;  // 4 bytes
 
-        public int uvIndex1;
-        public int uvIndex2;
-        public int uvIndex3;
+        public int uvIndex1;      // 4 bytes
+        public int uvIndex2;      // 4 bytes
+        public int uvIndex3;      // 4 bytes
+
+        public int padding1, padding2, padding3; // 12 bytes
+
+        // total: 64 bytes
 
         public Triangle(Vec3 v1, Vec3 v2, Vec3 v3, int textureIndex, int uvIndex1, int uvIndex2, int uvIndex3)
         {

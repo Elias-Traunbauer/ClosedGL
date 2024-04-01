@@ -328,7 +328,7 @@ namespace RenderTest
                     //var res = camera.Render([go, cub, cub1, .. gameObjects]);
 
 
-                    var res = camera.Render([volvo,/*house, , volvo2*/ /*volvo , */ /*cub1, */ /*volvo, volvo2*/ cub, cub1, .. gameObjects]);
+                    var res = camera.Render([/*volvo,*//*house, , volvo2*/ /*volvo , */ /*cub1, */ /*volvo, volvo2*/ cub, cub1, .. gameObjects]);
                     renderStopwatch.Stop();
 
                     //foreach (var item in res.Keys.Reverse())

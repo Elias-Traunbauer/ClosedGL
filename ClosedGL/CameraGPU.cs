@@ -941,6 +941,7 @@ namespace ClosedGL
         }
     }
 
+    [StructLayout(LayoutKind.Sequential, Pack = 1)]
     public struct Vec2
     {
         public float x;
