@@ -117,8 +117,8 @@ namespace VRageMath
         /// <param name="quaternion1">Source Quaternion.</param><param name="quaternion2">Source Quaternion.</param>
         public static bool operator ==(Quaternion quaternion1, Quaternion quaternion2)
         {
-            if ((double)quaternion1.X == (double)quaternion2.X && (double)quaternion1.Y == (double)quaternion2.Y && (double)quaternion1.Z == (double)quaternion2.Z)
-                return (double)quaternion1.W == (double)quaternion2.W;
+            if ((float)quaternion1.X == (float)quaternion2.X && (float)quaternion1.Y == (float)quaternion2.Y && (float)quaternion1.Z == (float)quaternion2.Z)
+                return (float)quaternion1.W == (float)quaternion2.W;
             else
                 return false;
         }
@@ -129,8 +129,8 @@ namespace VRageMath
         /// <param name="quaternion1">Source Quaternion.</param><param name="quaternion2">Source Quaternion.</param>
         public static bool operator !=(Quaternion quaternion1, Quaternion quaternion2)
         {
-            if ((double)quaternion1.X == (double)quaternion2.X && (double)quaternion1.Y == (double)quaternion2.Y && (double)quaternion1.Z == (double)quaternion2.Z)
-                return (double)quaternion1.W != (double)quaternion2.W;
+            if ((float)quaternion1.X == (float)quaternion2.X && (float)quaternion1.Y == (float)quaternion2.Y && (float)quaternion1.Z == (float)quaternion2.Z)
+                return (float)quaternion1.W != (float)quaternion2.W;
             else
                 return true;
         }
@@ -177,14 +177,14 @@ namespace VRageMath
             float num6 = quaternion2.Y;
             float num7 = quaternion2.Z;
             float num8 = quaternion2.W;
-            float num9 = (float)((double)num2 * (double)num7 - (double)num3 * (double)num6);
-            float num10 = (float)((double)num3 * (double)num5 - (double)num1 * (double)num7);
-            float num11 = (float)((double)num1 * (double)num6 - (double)num2 * (double)num5);
-            float num12 = (float)((double)num1 * (double)num5 + (double)num2 * (double)num6 + (double)num3 * (double)num7);
+            float num9 = (float)((float)num2 * (float)num7 - (float)num3 * (float)num6);
+            float num10 = (float)((float)num3 * (float)num5 - (float)num1 * (float)num7);
+            float num11 = (float)((float)num1 * (float)num6 - (float)num2 * (float)num5);
+            float num12 = (float)((float)num1 * (float)num5 + (float)num2 * (float)num6 + (float)num3 * (float)num7);
             Quaternion quaternion;
-            quaternion.X = (float)((double)num1 * (double)num8 + (double)num5 * (double)num4) + num9;
-            quaternion.Y = (float)((double)num2 * (double)num8 + (double)num6 * (double)num4) + num10;
-            quaternion.Z = (float)((double)num3 * (double)num8 + (double)num7 * (double)num4) + num11;
+            quaternion.X = (float)((float)num1 * (float)num8 + (float)num5 * (float)num4) + num9;
+            quaternion.Y = (float)((float)num2 * (float)num8 + (float)num6 * (float)num4) + num10;
+            quaternion.Z = (float)((float)num3 * (float)num8 + (float)num7 * (float)num4) + num11;
             quaternion.W = num4 * num8 - num12;
             return quaternion;
         }
@@ -213,19 +213,19 @@ namespace VRageMath
             float num2 = quaternion1.Y;
             float num3 = quaternion1.Z;
             float num4 = quaternion1.W;
-            float num5 = 1f / (float)((double)quaternion2.X * (double)quaternion2.X + (double)quaternion2.Y * (double)quaternion2.Y + (double)quaternion2.Z * (double)quaternion2.Z + (double)quaternion2.W * (double)quaternion2.W);
+            float num5 = 1f / (float)((float)quaternion2.X * (float)quaternion2.X + (float)quaternion2.Y * (float)quaternion2.Y + (float)quaternion2.Z * (float)quaternion2.Z + (float)quaternion2.W * (float)quaternion2.W);
             float num6 = -quaternion2.X * num5;
             float num7 = -quaternion2.Y * num5;
             float num8 = -quaternion2.Z * num5;
             float num9 = quaternion2.W * num5;
-            float num10 = (float)((double)num2 * (double)num8 - (double)num3 * (double)num7);
-            float num11 = (float)((double)num3 * (double)num6 - (double)num1 * (double)num8);
-            float num12 = (float)((double)num1 * (double)num7 - (double)num2 * (double)num6);
-            float num13 = (float)((double)num1 * (double)num6 + (double)num2 * (double)num7 + (double)num3 * (double)num8);
+            float num10 = (float)((float)num2 * (float)num8 - (float)num3 * (float)num7);
+            float num11 = (float)((float)num3 * (float)num6 - (float)num1 * (float)num8);
+            float num12 = (float)((float)num1 * (float)num7 - (float)num2 * (float)num6);
+            float num13 = (float)((float)num1 * (float)num6 + (float)num2 * (float)num7 + (float)num3 * (float)num8);
             Quaternion quaternion;
-            quaternion.X = (float)((double)num1 * (double)num9 + (double)num6 * (double)num4) + num10;
-            quaternion.Y = (float)((double)num2 * (double)num9 + (double)num7 * (double)num4) + num11;
-            quaternion.Z = (float)((double)num3 * (double)num9 + (double)num8 * (double)num4) + num12;
+            quaternion.X = (float)((float)num1 * (float)num9 + (float)num6 * (float)num4) + num10;
+            quaternion.Y = (float)((float)num2 * (float)num9 + (float)num7 * (float)num4) + num11;
+            quaternion.Z = (float)((float)num3 * (float)num9 + (float)num8 * (float)num4) + num12;
             quaternion.W = num4 * num9 - num13;
             return quaternion;
         }
@@ -253,8 +253,8 @@ namespace VRageMath
         /// <param name="other">The Quaternion to compare with the current Quaternion.</param>
         public bool Equals(Quaternion other)
         {
-            if ((double)this.X == (double)other.X && (double)this.Y == (double)other.Y && (double)this.Z == (double)other.Z)
-                return (double)this.W == (double)other.W;
+            if ((float)this.X == (float)other.X && (float)this.Y == (float)other.Y && (float)this.Z == (float)other.Z)
+                return (float)this.W == (float)other.W;
             else
                 return false;
         }
@@ -289,7 +289,7 @@ namespace VRageMath
         /// </summary>
         public float LengthSquared()
         {
-            return (float)((double)this.X * (double)this.X + (double)this.Y * (double)this.Y + (double)this.Z * (double)this.Z + (double)this.W * (double)this.W);
+            return (float)((float)this.X * (float)this.X + (float)this.Y * (float)this.Y + (float)this.Z * (float)this.Z + (float)this.W * (float)this.W);
         }
 
         /// <summary>
@@ -297,7 +297,7 @@ namespace VRageMath
         /// </summary>
         public float Length()
         {
-            return (float)Math.Sqrt((double)this.X * (double)this.X + (double)this.Y * (double)this.Y + (double)this.Z * (double)this.Z + (double)this.W * (double)this.W);
+            return (float)Math.Sqrt((float)this.X * (float)this.X + (float)this.Y * (float)this.Y + (float)this.Z * (float)this.Z + (float)this.W * (float)this.W);
         }
 
         /// <summary>
@@ -305,7 +305,7 @@ namespace VRageMath
         /// </summary>
         public void Normalize()
         {
-            float num = 1f / (float)Math.Sqrt((double)this.X * (double)this.X + (double)this.Y * (double)this.Y + (double)this.Z * (double)this.Z + (double)this.W * (double)this.W);
+            float num = 1f / (float)Math.Sqrt((float)this.X * (float)this.X + (float)this.Y * (float)this.Y + (float)this.Z * (float)this.Z + (float)this.W * (float)this.W);
             this.X *= num;
             this.Y *= num;
             this.Z *= num;
@@ -334,7 +334,7 @@ namespace VRageMath
         /// <param name="quaternion">Source quaternion.</param>
         public static Quaternion Normalize(Quaternion quaternion)
         {
-            float num = 1f / (float)Math.Sqrt((double)quaternion.X * (double)quaternion.X + (double)quaternion.Y * (double)quaternion.Y + (double)quaternion.Z * (double)quaternion.Z + (double)quaternion.W * (double)quaternion.W);
+            float num = 1f / (float)Math.Sqrt((float)quaternion.X * (float)quaternion.X + (float)quaternion.Y * (float)quaternion.Y + (float)quaternion.Z * (float)quaternion.Z + (float)quaternion.W * (float)quaternion.W);
             Quaternion quaternion1;
             quaternion1.X = quaternion.X * num;
             quaternion1.Y = quaternion.Y * num;
@@ -349,7 +349,7 @@ namespace VRageMath
         /// <param name="quaternion">Source quaternion.</param><param name="result">[OutAttribute] Normalized quaternion.</param>
         public static void Normalize(ref Quaternion quaternion, out Quaternion result)
         {
-            float num = 1f / (float)Math.Sqrt((double)quaternion.X * (double)quaternion.X + (double)quaternion.Y * (double)quaternion.Y + (double)quaternion.Z * (double)quaternion.Z + (double)quaternion.W * (double)quaternion.W);
+            float num = 1f / (float)Math.Sqrt((float)quaternion.X * (float)quaternion.X + (float)quaternion.Y * (float)quaternion.Y + (float)quaternion.Z * (float)quaternion.Z + (float)quaternion.W * (float)quaternion.W);
             result.X = quaternion.X * num;
             result.Y = quaternion.Y * num;
             result.Z = quaternion.Z * num;
@@ -398,7 +398,7 @@ namespace VRageMath
         /// <param name="quaternion">Source Quaternion.</param>
         public static Quaternion Inverse(Quaternion quaternion)
         {
-            float num = 1f / (float)((double)quaternion.X * (double)quaternion.X + (double)quaternion.Y * (double)quaternion.Y + (double)quaternion.Z * (double)quaternion.Z + (double)quaternion.W * (double)quaternion.W);
+            float num = 1f / (float)((float)quaternion.X * (float)quaternion.X + (float)quaternion.Y * (float)quaternion.Y + (float)quaternion.Z * (float)quaternion.Z + (float)quaternion.W * (float)quaternion.W);
             Quaternion quaternion1;
             quaternion1.X = -quaternion.X * num;
             quaternion1.Y = -quaternion.Y * num;
@@ -413,7 +413,7 @@ namespace VRageMath
         /// <param name="quaternion">Source Quaternion.</param><param name="result">[OutAttribute] The inverse of the Quaternion.</param>
         public static void Inverse(ref Quaternion quaternion, out Quaternion result)
         {
-            float num = 1f / (float)((double)quaternion.X * (double)quaternion.X + (double)quaternion.Y * (double)quaternion.Y + (double)quaternion.Z * (double)quaternion.Z + (double)quaternion.W * (double)quaternion.W);
+            float num = 1f / (float)((float)quaternion.X * (float)quaternion.X + (float)quaternion.Y * (float)quaternion.Y + (float)quaternion.Z * (float)quaternion.Z + (float)quaternion.W * (float)quaternion.W);
             result.X = -quaternion.X * num;
             result.Y = -quaternion.Y * num;
             result.Z = -quaternion.Z * num;
@@ -427,8 +427,8 @@ namespace VRageMath
         public static Quaternion CreateFromAxisAngle(Vector3 axis, float angle)
         {
             float num1 = angle * 0.5f;
-            float num2 = (float)Math.Sin((double)num1);
-            float num3 = (float)Math.Cos((double)num1);
+            float num2 = (float)Math.Sin((float)num1);
+            float num3 = (float)Math.Cos((float)num1);
             Quaternion quaternion;
             quaternion.X = axis.X * num2;
             quaternion.Y = axis.Y * num2;
@@ -444,8 +444,8 @@ namespace VRageMath
         public static void CreateFromAxisAngle(ref Vector3 axis, float angle, out Quaternion result)
         {
             float num1 = angle * 0.5f;
-            float num2 = (float)Math.Sin((double)num1);
-            float num3 = (float)Math.Cos((double)num1);
+            float num2 = (float)Math.Sin((float)num1);
+            float num3 = (float)Math.Cos((float)num1);
             result.X = axis.X * num2;
             result.Y = axis.Y * num2;
             result.Z = axis.Z * num2;
@@ -459,19 +459,19 @@ namespace VRageMath
         public static Quaternion CreateFromYawPitchRoll(float yaw, float pitch, float roll)
         {
             float num1 = roll * 0.5f;
-            float num2 = (float)Math.Sin((double)num1);
-            float num3 = (float)Math.Cos((double)num1);
+            float num2 = (float)Math.Sin((float)num1);
+            float num3 = (float)Math.Cos((float)num1);
             float num4 = pitch * 0.5f;
-            float num5 = (float)Math.Sin((double)num4);
-            float num6 = (float)Math.Cos((double)num4);
+            float num5 = (float)Math.Sin((float)num4);
+            float num6 = (float)Math.Cos((float)num4);
             float num7 = yaw * 0.5f;
-            float num8 = (float)Math.Sin((double)num7);
-            float num9 = (float)Math.Cos((double)num7);
+            float num8 = (float)Math.Sin((float)num7);
+            float num9 = (float)Math.Cos((float)num7);
             Quaternion quaternion;
-            quaternion.X = (float)((double)num9 * (double)num5 * (double)num3 + (double)num8 * (double)num6 * (double)num2);
-            quaternion.Y = (float)((double)num8 * (double)num6 * (double)num3 - (double)num9 * (double)num5 * (double)num2);
-            quaternion.Z = (float)((double)num9 * (double)num6 * (double)num2 - (double)num8 * (double)num5 * (double)num3);
-            quaternion.W = (float)((double)num9 * (double)num6 * (double)num3 + (double)num8 * (double)num5 * (double)num2);
+            quaternion.X = (float)((float)num9 * (float)num5 * (float)num3 + (float)num8 * (float)num6 * (float)num2);
+            quaternion.Y = (float)((float)num8 * (float)num6 * (float)num3 - (float)num9 * (float)num5 * (float)num2);
+            quaternion.Z = (float)((float)num9 * (float)num6 * (float)num2 - (float)num8 * (float)num5 * (float)num3);
+            quaternion.W = (float)((float)num9 * (float)num6 * (float)num3 + (float)num8 * (float)num5 * (float)num2);
             return quaternion;
         }
 
@@ -482,18 +482,18 @@ namespace VRageMath
         public static void CreateFromYawPitchRoll(float yaw, float pitch, float roll, out Quaternion result)
         {
             float num1 = roll * 0.5f;
-            float num2 = (float)Math.Sin((double)num1);
-            float num3 = (float)Math.Cos((double)num1);
+            float num2 = (float)Math.Sin((float)num1);
+            float num3 = (float)Math.Cos((float)num1);
             float num4 = pitch * 0.5f;
-            float num5 = (float)Math.Sin((double)num4);
-            float num6 = (float)Math.Cos((double)num4);
+            float num5 = (float)Math.Sin((float)num4);
+            float num6 = (float)Math.Cos((float)num4);
             float num7 = yaw * 0.5f;
-            float num8 = (float)Math.Sin((double)num7);
-            float num9 = (float)Math.Cos((double)num7);
-            result.X = (float)((double)num9 * (double)num5 * (double)num3 + (double)num8 * (double)num6 * (double)num2);
-            result.Y = (float)((double)num8 * (double)num6 * (double)num3 - (double)num9 * (double)num5 * (double)num2);
-            result.Z = (float)((double)num9 * (double)num6 * (double)num2 - (double)num8 * (double)num5 * (double)num3);
-            result.W = (float)((double)num9 * (double)num6 * (double)num3 + (double)num8 * (double)num5 * (double)num2);
+            float num8 = (float)Math.Sin((float)num7);
+            float num9 = (float)Math.Cos((float)num7);
+            result.X = (float)((float)num9 * (float)num5 * (float)num3 + (float)num8 * (float)num6 * (float)num2);
+            result.Y = (float)((float)num8 * (float)num6 * (float)num3 - (float)num9 * (float)num5 * (float)num2);
+            result.Z = (float)((float)num9 * (float)num6 * (float)num2 - (float)num8 * (float)num5 * (float)num3);
+            result.W = (float)((float)num9 * (float)num6 * (float)num3 + (float)num8 * (float)num5 * (float)num2);
         }
 
         /// <summary>
@@ -567,27 +567,27 @@ namespace VRageMath
         {
             float num1 = matrix.M11 + matrix.M22 + matrix.M33;
             Quaternion quaternion = new Quaternion();
-            if ((double)num1 > 0.0)
+            if ((float)num1 > 0.0)
             {
-                float num2 = (float)Math.Sqrt((double)num1 + 1.0);
+                float num2 = (float)Math.Sqrt((float)num1 + 1.0);
                 quaternion.W = num2 * 0.5f;
                 float num3 = 0.5f / num2;
                 quaternion.X = (matrix.M23 - matrix.M32) * num3;
                 quaternion.Y = (matrix.M31 - matrix.M13) * num3;
                 quaternion.Z = (matrix.M12 - matrix.M21) * num3;
             }
-            else if ((double)matrix.M11 >= (double)matrix.M22 && (double)matrix.M11 >= (double)matrix.M33)
+            else if ((float)matrix.M11 >= (float)matrix.M22 && (float)matrix.M11 >= (float)matrix.M33)
             {
-                float num2 = (float)Math.Sqrt(1.0 + (double)matrix.M11 - (double)matrix.M22 - (double)matrix.M33);
+                float num2 = (float)Math.Sqrt(1.0 + (float)matrix.M11 - (float)matrix.M22 - (float)matrix.M33);
                 float num3 = 0.5f / num2;
                 quaternion.X = 0.5f * num2;
                 quaternion.Y = (matrix.M12 + matrix.M21) * num3;
                 quaternion.Z = (matrix.M13 + matrix.M31) * num3;
                 quaternion.W = (matrix.M23 - matrix.M32) * num3;
             }
-            else if ((double)matrix.M22 > (double)matrix.M33)
+            else if ((float)matrix.M22 > (float)matrix.M33)
             {
-                float num2 = (float)Math.Sqrt(1.0 + (double)matrix.M22 - (double)matrix.M11 - (double)matrix.M33);
+                float num2 = (float)Math.Sqrt(1.0 + (float)matrix.M22 - (float)matrix.M11 - (float)matrix.M33);
                 float num3 = 0.5f / num2;
                 quaternion.X = (matrix.M21 + matrix.M12) * num3;
                 quaternion.Y = 0.5f * num2;
@@ -596,7 +596,7 @@ namespace VRageMath
             }
             else
             {
-                float num2 = (float)Math.Sqrt(1.0 + (double)matrix.M33 - (double)matrix.M11 - (double)matrix.M22);
+                float num2 = (float)Math.Sqrt(1.0 + (float)matrix.M33 - (float)matrix.M11 - (float)matrix.M22);
                 float num3 = 0.5f / num2;
                 quaternion.X = (matrix.M31 + matrix.M13) * num3;
                 quaternion.Y = (matrix.M32 + matrix.M23) * num3;
@@ -635,27 +635,27 @@ namespace VRageMath
         public static void CreateFromRotationMatrix(ref Matrix matrix, out Quaternion result)
         {
             float num1 = matrix.M11 + matrix.M22 + matrix.M33;
-            if ((double)num1 > 0.0)
+            if ((float)num1 > 0.0)
             {
-                float num2 = (float)Math.Sqrt((double)num1 + 1.0);
+                float num2 = (float)Math.Sqrt((float)num1 + 1.0);
                 result.W = num2 * 0.5f;
                 float num3 = 0.5f / num2;
                 result.X = (matrix.M23 - matrix.M32) * num3;
                 result.Y = (matrix.M31 - matrix.M13) * num3;
                 result.Z = (matrix.M12 - matrix.M21) * num3;
             }
-            else if ((double)matrix.M11 >= (double)matrix.M22 && (double)matrix.M11 >= (double)matrix.M33)
+            else if ((float)matrix.M11 >= (float)matrix.M22 && (float)matrix.M11 >= (float)matrix.M33)
             {
-                float num2 = (float)Math.Sqrt(1.0 + (double)matrix.M11 - (double)matrix.M22 - (double)matrix.M33);
+                float num2 = (float)Math.Sqrt(1.0 + (float)matrix.M11 - (float)matrix.M22 - (float)matrix.M33);
                 float num3 = 0.5f / num2;
                 result.X = 0.5f * num2;
                 result.Y = (matrix.M12 + matrix.M21) * num3;
                 result.Z = (matrix.M13 + matrix.M31) * num3;
                 result.W = (matrix.M23 - matrix.M32) * num3;
             }
-            else if ((double)matrix.M22 > (double)matrix.M33)
+            else if ((float)matrix.M22 > (float)matrix.M33)
             {
-                float num2 = (float)Math.Sqrt(1.0 + (double)matrix.M22 - (double)matrix.M11 - (double)matrix.M33);
+                float num2 = (float)Math.Sqrt(1.0 + (float)matrix.M22 - (float)matrix.M11 - (float)matrix.M33);
                 float num3 = 0.5f / num2;
                 result.X = (matrix.M21 + matrix.M12) * num3;
                 result.Y = 0.5f * num2;
@@ -664,7 +664,7 @@ namespace VRageMath
             }
             else
             {
-                float num2 = (float)Math.Sqrt(1.0 + (double)matrix.M33 - (double)matrix.M11 - (double)matrix.M22);
+                float num2 = (float)Math.Sqrt(1.0 + (float)matrix.M33 - (float)matrix.M11 - (float)matrix.M22);
                 float num3 = 0.5f / num2;
                 result.X = (matrix.M31 + matrix.M13) * num3;
                 result.Y = (matrix.M32 + matrix.M23) * num3;
@@ -679,7 +679,7 @@ namespace VRageMath
         /// <param name="quaternion1">Source Quaternion.</param><param name="quaternion2">Source Quaternion.</param>
         public static float Dot(Quaternion quaternion1, Quaternion quaternion2)
         {
-            return (float)((double)quaternion1.X * (double)quaternion2.X + (double)quaternion1.Y * (double)quaternion2.Y + (double)quaternion1.Z * (double)quaternion2.Z + (double)quaternion1.W * (double)quaternion2.W);
+            return (float)((float)quaternion1.X * (float)quaternion2.X + (float)quaternion1.Y * (float)quaternion2.Y + (float)quaternion1.Z * (float)quaternion2.Z + (float)quaternion1.W * (float)quaternion2.W);
         }
 
         /// <summary>
@@ -688,7 +688,7 @@ namespace VRageMath
         /// <param name="quaternion1">Source Quaternion.</param><param name="quaternion2">Source Quaternion.</param><param name="result">[OutAttribute] Dot product of the Quaternions.</param>
         public static void Dot(ref Quaternion quaternion1, ref Quaternion quaternion2, out float result)
         {
-            result = (float)((double)quaternion1.X * (double)quaternion2.X + (double)quaternion1.Y * (double)quaternion2.Y + (double)quaternion1.Z * (double)quaternion2.Z + (double)quaternion1.W * (double)quaternion2.W);
+            result = (float)((float)quaternion1.X * (float)quaternion2.X + (float)quaternion1.Y * (float)quaternion2.Y + (float)quaternion1.Z * (float)quaternion2.Z + (float)quaternion1.W * (float)quaternion2.W);
         }
 
         /// <summary>
@@ -698,32 +698,32 @@ namespace VRageMath
         public static Quaternion Slerp(Quaternion quaternion1, Quaternion quaternion2, float amount)
         {
             float num1 = amount;
-            float num2 = (float)((double)quaternion1.X * (double)quaternion2.X + (double)quaternion1.Y * (double)quaternion2.Y + (double)quaternion1.Z * (double)quaternion2.Z + (double)quaternion1.W * (double)quaternion2.W);
+            float num2 = (float)((float)quaternion1.X * (float)quaternion2.X + (float)quaternion1.Y * (float)quaternion2.Y + (float)quaternion1.Z * (float)quaternion2.Z + (float)quaternion1.W * (float)quaternion2.W);
             bool flag = false;
-            if ((double)num2 < 0.0)
+            if ((float)num2 < 0.0)
             {
                 flag = true;
                 num2 = -num2;
             }
             float num3;
             float num4;
-            if ((double)num2 > 0.999998986721039)
+            if ((float)num2 > 0.999998986721039)
             {
                 num3 = 1f - num1;
                 num4 = flag ? -num1 : num1;
             }
             else
             {
-                float num5 = (float)Math.Acos((double)num2);
-                float num6 = (float)(1.0 / Math.Sin((double)num5));
-                num3 = (float)Math.Sin((1.0 - (double)num1) * (double)num5) * num6;
-                num4 = flag ? (float)-Math.Sin((double)num1 * (double)num5) * num6 : (float)Math.Sin((double)num1 * (double)num5) * num6;
+                float num5 = (float)Math.Acos((float)num2);
+                float num6 = (float)(1.0 / Math.Sin((float)num5));
+                num3 = (float)Math.Sin((1.0 - (float)num1) * (float)num5) * num6;
+                num4 = flag ? (float)-Math.Sin((float)num1 * (float)num5) * num6 : (float)Math.Sin((float)num1 * (float)num5) * num6;
             }
             Quaternion quaternion;
-            quaternion.X = (float)((double)num3 * (double)quaternion1.X + (double)num4 * (double)quaternion2.X);
-            quaternion.Y = (float)((double)num3 * (double)quaternion1.Y + (double)num4 * (double)quaternion2.Y);
-            quaternion.Z = (float)((double)num3 * (double)quaternion1.Z + (double)num4 * (double)quaternion2.Z);
-            quaternion.W = (float)((double)num3 * (double)quaternion1.W + (double)num4 * (double)quaternion2.W);
+            quaternion.X = (float)((float)num3 * (float)quaternion1.X + (float)num4 * (float)quaternion2.X);
+            quaternion.Y = (float)((float)num3 * (float)quaternion1.Y + (float)num4 * (float)quaternion2.Y);
+            quaternion.Z = (float)((float)num3 * (float)quaternion1.Z + (float)num4 * (float)quaternion2.Z);
+            quaternion.W = (float)((float)num3 * (float)quaternion1.W + (float)num4 * (float)quaternion2.W);
             return quaternion;
         }
 
@@ -734,31 +734,31 @@ namespace VRageMath
         public static void Slerp(ref Quaternion quaternion1, ref Quaternion quaternion2, float amount, out Quaternion result)
         {
             float num1 = amount;
-            float num2 = (float)((double)quaternion1.X * (double)quaternion2.X + (double)quaternion1.Y * (double)quaternion2.Y + (double)quaternion1.Z * (double)quaternion2.Z + (double)quaternion1.W * (double)quaternion2.W);
+            float num2 = (float)((float)quaternion1.X * (float)quaternion2.X + (float)quaternion1.Y * (float)quaternion2.Y + (float)quaternion1.Z * (float)quaternion2.Z + (float)quaternion1.W * (float)quaternion2.W);
             bool flag = false;
-            if ((double)num2 < 0.0)
+            if ((float)num2 < 0.0)
             {
                 flag = true;
                 num2 = -num2;
             }
             float num3;
             float num4;
-            if ((double)num2 > 0.999998986721039)
+            if ((float)num2 > 0.999998986721039)
             {
                 num3 = 1f - num1;
                 num4 = flag ? -num1 : num1;
             }
             else
             {
-                float num5 = (float)Math.Acos((double)num2);
-                float num6 = (float)(1.0 / Math.Sin((double)num5));
-                num3 = (float)Math.Sin((1.0 - (double)num1) * (double)num5) * num6;
-                num4 = flag ? (float)-Math.Sin((double)num1 * (double)num5) * num6 : (float)Math.Sin((double)num1 * (double)num5) * num6;
+                float num5 = (float)Math.Acos((float)num2);
+                float num6 = (float)(1.0 / Math.Sin((float)num5));
+                num3 = (float)Math.Sin((1.0 - (float)num1) * (float)num5) * num6;
+                num4 = flag ? (float)-Math.Sin((float)num1 * (float)num5) * num6 : (float)Math.Sin((float)num1 * (float)num5) * num6;
             }
-            result.X = (float)((double)num3 * (double)quaternion1.X + (double)num4 * (double)quaternion2.X);
-            result.Y = (float)((double)num3 * (double)quaternion1.Y + (double)num4 * (double)quaternion2.Y);
-            result.Z = (float)((double)num3 * (double)quaternion1.Z + (double)num4 * (double)quaternion2.Z);
-            result.W = (float)((double)num3 * (double)quaternion1.W + (double)num4 * (double)quaternion2.W);
+            result.X = (float)((float)num3 * (float)quaternion1.X + (float)num4 * (float)quaternion2.X);
+            result.Y = (float)((float)num3 * (float)quaternion1.Y + (float)num4 * (float)quaternion2.Y);
+            result.Z = (float)((float)num3 * (float)quaternion1.Z + (float)num4 * (float)quaternion2.Z);
+            result.W = (float)((float)num3 * (float)quaternion1.W + (float)num4 * (float)quaternion2.W);
         }
 
         /// <summary>
@@ -770,21 +770,21 @@ namespace VRageMath
             float num1 = amount;
             float num2 = 1f - num1;
             Quaternion quaternion = new Quaternion();
-            if ((double)quaternion1.X * (double)quaternion2.X + (double)quaternion1.Y * (double)quaternion2.Y + (double)quaternion1.Z * (double)quaternion2.Z + (double)quaternion1.W * (double)quaternion2.W >= 0.0)
+            if ((float)quaternion1.X * (float)quaternion2.X + (float)quaternion1.Y * (float)quaternion2.Y + (float)quaternion1.Z * (float)quaternion2.Z + (float)quaternion1.W * (float)quaternion2.W >= 0.0)
             {
-                quaternion.X = (float)((double)num2 * (double)quaternion1.X + (double)num1 * (double)quaternion2.X);
-                quaternion.Y = (float)((double)num2 * (double)quaternion1.Y + (double)num1 * (double)quaternion2.Y);
-                quaternion.Z = (float)((double)num2 * (double)quaternion1.Z + (double)num1 * (double)quaternion2.Z);
-                quaternion.W = (float)((double)num2 * (double)quaternion1.W + (double)num1 * (double)quaternion2.W);
+                quaternion.X = (float)((float)num2 * (float)quaternion1.X + (float)num1 * (float)quaternion2.X);
+                quaternion.Y = (float)((float)num2 * (float)quaternion1.Y + (float)num1 * (float)quaternion2.Y);
+                quaternion.Z = (float)((float)num2 * (float)quaternion1.Z + (float)num1 * (float)quaternion2.Z);
+                quaternion.W = (float)((float)num2 * (float)quaternion1.W + (float)num1 * (float)quaternion2.W);
             }
             else
             {
-                quaternion.X = (float)((double)num2 * (double)quaternion1.X - (double)num1 * (double)quaternion2.X);
-                quaternion.Y = (float)((double)num2 * (double)quaternion1.Y - (double)num1 * (double)quaternion2.Y);
-                quaternion.Z = (float)((double)num2 * (double)quaternion1.Z - (double)num1 * (double)quaternion2.Z);
-                quaternion.W = (float)((double)num2 * (double)quaternion1.W - (double)num1 * (double)quaternion2.W);
+                quaternion.X = (float)((float)num2 * (float)quaternion1.X - (float)num1 * (float)quaternion2.X);
+                quaternion.Y = (float)((float)num2 * (float)quaternion1.Y - (float)num1 * (float)quaternion2.Y);
+                quaternion.Z = (float)((float)num2 * (float)quaternion1.Z - (float)num1 * (float)quaternion2.Z);
+                quaternion.W = (float)((float)num2 * (float)quaternion1.W - (float)num1 * (float)quaternion2.W);
             }
-            float num3 = 1f / (float)Math.Sqrt((double)quaternion.X * (double)quaternion.X + (double)quaternion.Y * (double)quaternion.Y + (double)quaternion.Z * (double)quaternion.Z + (double)quaternion.W * (double)quaternion.W);
+            float num3 = 1f / (float)Math.Sqrt((float)quaternion.X * (float)quaternion.X + (float)quaternion.Y * (float)quaternion.Y + (float)quaternion.Z * (float)quaternion.Z + (float)quaternion.W * (float)quaternion.W);
             quaternion.X *= num3;
             quaternion.Y *= num3;
             quaternion.Z *= num3;
@@ -800,21 +800,21 @@ namespace VRageMath
         {
             float num1 = amount;
             float num2 = 1f - num1;
-            if ((double)quaternion1.X * (double)quaternion2.X + (double)quaternion1.Y * (double)quaternion2.Y + (double)quaternion1.Z * (double)quaternion2.Z + (double)quaternion1.W * (double)quaternion2.W >= 0.0)
+            if ((float)quaternion1.X * (float)quaternion2.X + (float)quaternion1.Y * (float)quaternion2.Y + (float)quaternion1.Z * (float)quaternion2.Z + (float)quaternion1.W * (float)quaternion2.W >= 0.0)
             {
-                result.X = (float)((double)num2 * (double)quaternion1.X + (double)num1 * (double)quaternion2.X);
-                result.Y = (float)((double)num2 * (double)quaternion1.Y + (double)num1 * (double)quaternion2.Y);
-                result.Z = (float)((double)num2 * (double)quaternion1.Z + (double)num1 * (double)quaternion2.Z);
-                result.W = (float)((double)num2 * (double)quaternion1.W + (double)num1 * (double)quaternion2.W);
+                result.X = (float)((float)num2 * (float)quaternion1.X + (float)num1 * (float)quaternion2.X);
+                result.Y = (float)((float)num2 * (float)quaternion1.Y + (float)num1 * (float)quaternion2.Y);
+                result.Z = (float)((float)num2 * (float)quaternion1.Z + (float)num1 * (float)quaternion2.Z);
+                result.W = (float)((float)num2 * (float)quaternion1.W + (float)num1 * (float)quaternion2.W);
             }
             else
             {
-                result.X = (float)((double)num2 * (double)quaternion1.X - (double)num1 * (double)quaternion2.X);
-                result.Y = (float)((double)num2 * (double)quaternion1.Y - (double)num1 * (double)quaternion2.Y);
-                result.Z = (float)((double)num2 * (double)quaternion1.Z - (double)num1 * (double)quaternion2.Z);
-                result.W = (float)((double)num2 * (double)quaternion1.W - (double)num1 * (double)quaternion2.W);
+                result.X = (float)((float)num2 * (float)quaternion1.X - (float)num1 * (float)quaternion2.X);
+                result.Y = (float)((float)num2 * (float)quaternion1.Y - (float)num1 * (float)quaternion2.Y);
+                result.Z = (float)((float)num2 * (float)quaternion1.Z - (float)num1 * (float)quaternion2.Z);
+                result.W = (float)((float)num2 * (float)quaternion1.W - (float)num1 * (float)quaternion2.W);
             }
-            float num3 = 1f / (float)Math.Sqrt((double)result.X * (double)result.X + (double)result.Y * (double)result.Y + (double)result.Z * (double)result.Z + (double)result.W * (double)result.W);
+            float num3 = 1f / (float)Math.Sqrt((float)result.X * (float)result.X + (float)result.Y * (float)result.Y + (float)result.Z * (float)result.Z + (float)result.W * (float)result.W);
             result.X *= num3;
             result.Y *= num3;
             result.Z *= num3;
@@ -835,14 +835,14 @@ namespace VRageMath
             float num6 = value1.Y;
             float num7 = value1.Z;
             float num8 = value1.W;
-            float num9 = (float)((double)num2 * (double)num7 - (double)num3 * (double)num6);
-            float num10 = (float)((double)num3 * (double)num5 - (double)num1 * (double)num7);
-            float num11 = (float)((double)num1 * (double)num6 - (double)num2 * (double)num5);
-            float num12 = (float)((double)num1 * (double)num5 + (double)num2 * (double)num6 + (double)num3 * (double)num7);
+            float num9 = (float)((float)num2 * (float)num7 - (float)num3 * (float)num6);
+            float num10 = (float)((float)num3 * (float)num5 - (float)num1 * (float)num7);
+            float num11 = (float)((float)num1 * (float)num6 - (float)num2 * (float)num5);
+            float num12 = (float)((float)num1 * (float)num5 + (float)num2 * (float)num6 + (float)num3 * (float)num7);
             Quaternion quaternion;
-            quaternion.X = (float)((double)num1 * (double)num8 + (double)num5 * (double)num4) + num9;
-            quaternion.Y = (float)((double)num2 * (double)num8 + (double)num6 * (double)num4) + num10;
-            quaternion.Z = (float)((double)num3 * (double)num8 + (double)num7 * (double)num4) + num11;
+            quaternion.X = (float)((float)num1 * (float)num8 + (float)num5 * (float)num4) + num9;
+            quaternion.Y = (float)((float)num2 * (float)num8 + (float)num6 * (float)num4) + num10;
+            quaternion.Z = (float)((float)num3 * (float)num8 + (float)num7 * (float)num4) + num11;
             quaternion.W = num4 * num8 - num12;
             return quaternion;
         }
@@ -861,13 +861,13 @@ namespace VRageMath
             float num6 = value1.Y;
             float num7 = value1.Z;
             float num8 = value1.W;
-            float num9 = (float)((double)num2 * (double)num7 - (double)num3 * (double)num6);
-            float num10 = (float)((double)num3 * (double)num5 - (double)num1 * (double)num7);
-            float num11 = (float)((double)num1 * (double)num6 - (double)num2 * (double)num5);
-            float num12 = (float)((double)num1 * (double)num5 + (double)num2 * (double)num6 + (double)num3 * (double)num7);
-            result.X = (float)((double)num1 * (double)num8 + (double)num5 * (double)num4) + num9;
-            result.Y = (float)((double)num2 * (double)num8 + (double)num6 * (double)num4) + num10;
-            result.Z = (float)((double)num3 * (double)num8 + (double)num7 * (double)num4) + num11;
+            float num9 = (float)((float)num2 * (float)num7 - (float)num3 * (float)num6);
+            float num10 = (float)((float)num3 * (float)num5 - (float)num1 * (float)num7);
+            float num11 = (float)((float)num1 * (float)num6 - (float)num2 * (float)num5);
+            float num12 = (float)((float)num1 * (float)num5 + (float)num2 * (float)num6 + (float)num3 * (float)num7);
+            result.X = (float)((float)num1 * (float)num8 + (float)num5 * (float)num4) + num9;
+            result.Y = (float)((float)num2 * (float)num8 + (float)num6 * (float)num4) + num10;
+            result.Z = (float)((float)num3 * (float)num8 + (float)num7 * (float)num4) + num11;
             result.W = num4 * num8 - num12;
         }
 
@@ -963,14 +963,14 @@ namespace VRageMath
             float num6 = quaternion2.Y;
             float num7 = quaternion2.Z;
             float num8 = quaternion2.W;
-            float num9 = (float)((double)num2 * (double)num7 - (double)num3 * (double)num6);
-            float num10 = (float)((double)num3 * (double)num5 - (double)num1 * (double)num7);
-            float num11 = (float)((double)num1 * (double)num6 - (double)num2 * (double)num5);
-            float num12 = (float)((double)num1 * (double)num5 + (double)num2 * (double)num6 + (double)num3 * (double)num7);
+            float num9 = (float)((float)num2 * (float)num7 - (float)num3 * (float)num6);
+            float num10 = (float)((float)num3 * (float)num5 - (float)num1 * (float)num7);
+            float num11 = (float)((float)num1 * (float)num6 - (float)num2 * (float)num5);
+            float num12 = (float)((float)num1 * (float)num5 + (float)num2 * (float)num6 + (float)num3 * (float)num7);
             Quaternion quaternion;
-            quaternion.X = (float)((double)num1 * (double)num8 + (double)num5 * (double)num4) + num9;
-            quaternion.Y = (float)((double)num2 * (double)num8 + (double)num6 * (double)num4) + num10;
-            quaternion.Z = (float)((double)num3 * (double)num8 + (double)num7 * (double)num4) + num11;
+            quaternion.X = (float)((float)num1 * (float)num8 + (float)num5 * (float)num4) + num9;
+            quaternion.Y = (float)((float)num2 * (float)num8 + (float)num6 * (float)num4) + num10;
+            quaternion.Z = (float)((float)num3 * (float)num8 + (float)num7 * (float)num4) + num11;
             quaternion.W = num4 * num8 - num12;
             return quaternion;
         }
@@ -989,13 +989,13 @@ namespace VRageMath
             float num6 = quaternion2.Y;
             float num7 = quaternion2.Z;
             float num8 = quaternion2.W;
-            float num9 = (float)((double)num2 * (double)num7 - (double)num3 * (double)num6);
-            float num10 = (float)((double)num3 * (double)num5 - (double)num1 * (double)num7);
-            float num11 = (float)((double)num1 * (double)num6 - (double)num2 * (double)num5);
-            float num12 = (float)((double)num1 * (double)num5 + (double)num2 * (double)num6 + (double)num3 * (double)num7);
-            result.X = (float)((double)num1 * (double)num8 + (double)num5 * (double)num4) + num9;
-            result.Y = (float)((double)num2 * (double)num8 + (double)num6 * (double)num4) + num10;
-            result.Z = (float)((double)num3 * (double)num8 + (double)num7 * (double)num4) + num11;
+            float num9 = (float)((float)num2 * (float)num7 - (float)num3 * (float)num6);
+            float num10 = (float)((float)num3 * (float)num5 - (float)num1 * (float)num7);
+            float num11 = (float)((float)num1 * (float)num6 - (float)num2 * (float)num5);
+            float num12 = (float)((float)num1 * (float)num5 + (float)num2 * (float)num6 + (float)num3 * (float)num7);
+            result.X = (float)((float)num1 * (float)num8 + (float)num5 * (float)num4) + num9;
+            result.Y = (float)((float)num2 * (float)num8 + (float)num6 * (float)num4) + num10;
+            result.Z = (float)((float)num3 * (float)num8 + (float)num7 * (float)num4) + num11;
             result.W = num4 * num8 - num12;
         }
 
@@ -1035,19 +1035,19 @@ namespace VRageMath
             float num2 = quaternion1.Y;
             float num3 = quaternion1.Z;
             float num4 = quaternion1.W;
-            float num5 = 1f / (float)((double)quaternion2.X * (double)quaternion2.X + (double)quaternion2.Y * (double)quaternion2.Y + (double)quaternion2.Z * (double)quaternion2.Z + (double)quaternion2.W * (double)quaternion2.W);
+            float num5 = 1f / (float)((float)quaternion2.X * (float)quaternion2.X + (float)quaternion2.Y * (float)quaternion2.Y + (float)quaternion2.Z * (float)quaternion2.Z + (float)quaternion2.W * (float)quaternion2.W);
             float num6 = -quaternion2.X * num5;
             float num7 = -quaternion2.Y * num5;
             float num8 = -quaternion2.Z * num5;
             float num9 = quaternion2.W * num5;
-            float num10 = (float)((double)num2 * (double)num8 - (double)num3 * (double)num7);
-            float num11 = (float)((double)num3 * (double)num6 - (double)num1 * (double)num8);
-            float num12 = (float)((double)num1 * (double)num7 - (double)num2 * (double)num6);
-            float num13 = (float)((double)num1 * (double)num6 + (double)num2 * (double)num7 + (double)num3 * (double)num8);
+            float num10 = (float)((float)num2 * (float)num8 - (float)num3 * (float)num7);
+            float num11 = (float)((float)num3 * (float)num6 - (float)num1 * (float)num8);
+            float num12 = (float)((float)num1 * (float)num7 - (float)num2 * (float)num6);
+            float num13 = (float)((float)num1 * (float)num6 + (float)num2 * (float)num7 + (float)num3 * (float)num8);
             Quaternion quaternion;
-            quaternion.X = (float)((double)num1 * (double)num9 + (double)num6 * (double)num4) + num10;
-            quaternion.Y = (float)((double)num2 * (double)num9 + (double)num7 * (double)num4) + num11;
-            quaternion.Z = (float)((double)num3 * (double)num9 + (double)num8 * (double)num4) + num12;
+            quaternion.X = (float)((float)num1 * (float)num9 + (float)num6 * (float)num4) + num10;
+            quaternion.Y = (float)((float)num2 * (float)num9 + (float)num7 * (float)num4) + num11;
+            quaternion.Z = (float)((float)num3 * (float)num9 + (float)num8 * (float)num4) + num12;
             quaternion.W = num4 * num9 - num13;
             return quaternion;
         }
@@ -1062,18 +1062,18 @@ namespace VRageMath
             float num2 = quaternion1.Y;
             float num3 = quaternion1.Z;
             float num4 = quaternion1.W;
-            float num5 = 1f / (float)((double)quaternion2.X * (double)quaternion2.X + (double)quaternion2.Y * (double)quaternion2.Y + (double)quaternion2.Z * (double)quaternion2.Z + (double)quaternion2.W * (double)quaternion2.W);
+            float num5 = 1f / (float)((float)quaternion2.X * (float)quaternion2.X + (float)quaternion2.Y * (float)quaternion2.Y + (float)quaternion2.Z * (float)quaternion2.Z + (float)quaternion2.W * (float)quaternion2.W);
             float num6 = -quaternion2.X * num5;
             float num7 = -quaternion2.Y * num5;
             float num8 = -quaternion2.Z * num5;
             float num9 = quaternion2.W * num5;
-            float num10 = (float)((double)num2 * (double)num8 - (double)num3 * (double)num7);
-            float num11 = (float)((double)num3 * (double)num6 - (double)num1 * (double)num8);
-            float num12 = (float)((double)num1 * (double)num7 - (double)num2 * (double)num6);
-            float num13 = (float)((double)num1 * (double)num6 + (double)num2 * (double)num7 + (double)num3 * (double)num8);
-            result.X = (float)((double)num1 * (double)num9 + (double)num6 * (double)num4) + num10;
-            result.Y = (float)((double)num2 * (double)num9 + (double)num7 * (double)num4) + num11;
-            result.Z = (float)((double)num3 * (double)num9 + (double)num8 * (double)num4) + num12;
+            float num10 = (float)((float)num2 * (float)num8 - (float)num3 * (float)num7);
+            float num11 = (float)((float)num3 * (float)num6 - (float)num1 * (float)num8);
+            float num12 = (float)((float)num1 * (float)num7 - (float)num2 * (float)num6);
+            float num13 = (float)((float)num1 * (float)num6 + (float)num2 * (float)num7 + (float)num3 * (float)num8);
+            result.X = (float)((float)num1 * (float)num9 + (float)num6 * (float)num4) + num10;
+            result.Y = (float)((float)num2 * (float)num9 + (float)num7 * (float)num4) + num11;
+            result.Z = (float)((float)num3 * (float)num9 + (float)num8 * (float)num4) + num12;
             result.W = num4 * num9 - num13;
         }
 

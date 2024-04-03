@@ -778,11 +778,6 @@ namespace ClosedGL
             return new Vec3(v1.x * v, v1.y * v, v1.z * v);
         }
 
-        public static Vec3 operator *(Vec3 v1, double v)
-        {
-            return new Vec3((float)(v1.x * v), (float)(v1.y * v), (float)(v1.z * v));
-        }
-
         public float length()
         {
             return XMath.Sqrt(x * x + y * y + z * z);
@@ -812,7 +807,7 @@ namespace ClosedGL
             z /= l;
         }
 
-        public static Vec3 operator /(Vec3 v1, double v)
+        public static Vec3 operator /(Vec3 v1, float v)
         {
             return new Vec3((float)(v1.x / v), (float)(v1.y / v), (float)(v1.z / v));
         }

@@ -99,7 +99,7 @@ namespace ClosedGL.Memory
             return result;
         }
 
-        public static unsafe TDest[] ExtractFieldAndCastArray<TSrc, TDest, TObj>(IEnumerable<TObj> source, Func<TObj, TSrc> selector) where TSrc : unmanaged where TDest : unmanaged
+        public unsafe static TDest[] ExtractFieldAndCastArray<TSrc, TDest, TObj>(IEnumerable<TObj> source, Func<TObj, TSrc> selector) where TSrc : unmanaged where TDest : unmanaged
         {
             int totalLength = source.Count();
             TDest[] result = new TDest[totalLength];

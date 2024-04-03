@@ -455,7 +455,7 @@ namespace ClosedGL
             var worldDirection = worldVector - cameraPosition;
 
             // Calculate length and handle zero length case
-            double directionLength = worldDirection.length();
+            float directionLength = worldDirection.length();
             if (directionLength > double.Epsilon)
             {
                 // Normalize only if the length is not close to zero
