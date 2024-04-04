@@ -13,6 +13,11 @@
     <ProjectReference Include="..\ClosedGL\ClosedGL.csproj" />
   </ItemGroup>
 
+  <PropertyGroup>
+    <GenerateAssemblyInfo>False</GenerateAssemblyInfo>
+    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+  </PropertyGroup>
+
   <ItemGroup>
     <Content  Include="Models\**" >
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

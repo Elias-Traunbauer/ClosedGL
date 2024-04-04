@@ -403,6 +403,7 @@ namespace ClosedGL
                 }
                 gameObjectIndex++;
             }
+            currentTriangleCount = 0;
 
             for (int triangleIndex = triangleIndexStart; triangleIndex < triangleIndexStart + triangleCount.Value; triangleIndex++)
             {
@@ -439,15 +440,21 @@ namespace ClosedGL
                 resultVertices[verticesIndex + 1] = v2;
                 resultVertices[verticesIndex + 2] = v3;
 
-                resultTriangles[verticesIndex + 0] = (int)verticesIndex + 0;
-                resultTriangles[verticesIndex + 1] = (int)verticesIndex + 1;
-                resultTriangles[verticesIndex + 2] = (int)verticesIndex + 2;
+                resultTriangles[verticesIndex + 0] = verticesIndex + 0;
+                resultTriangles[verticesIndex + 1] = verticesIndex + 1;
+                resultTriangles[verticesIndex + 2] = verticesIndex + 2;
 
                 resultUVs[verticesIndex + 0] = uvSourceBuffer[triangleSourceBuffer[verticesStartIndex + 0]];
                 resultUVs[verticesIndex + 1] = uvSourceBuffer[triangleSourceBuffer[verticesStartIndex + 1]];
                 resultUVs[verticesIndex + 2] = uvSourceBuffer[triangleSourceBuffer[verticesStartIndex + 2]];
 
-                gameObjectIndex++;
+                currentTriangleCount++;
+
+                if (currentTriangleCount >= trianglesPerGameObject[gameObjectIndex])
+                {
+                    gameObjectIndex++;
+                    currentTriangleCount = 0;
+                }
             }
         }
 
@@ -456,7 +463,7 @@ namespace ClosedGL
             var worldDirection = worldVector - cameraPosition;
 
             // Calculate length and handle zero length case
-            double directionLength = worldDirection.length();
+            float directionLength = worldDirection.length();
             if (directionLength > double.Epsilon)
             {
                 // Normalize only if the length is not close to zero
@@ -707,6 +714,11 @@ namespace ClosedGL
             Triangle[] triangleBufferLocal = new Triangle[TRIANGLE_BUFFER_PER_TILE];
             int projectedTrianglesStartIndex = tileIndex * TRIANGLE_BUFFER_PER_TILE;
 
+            for (int i = 0; i < projectedTrianglesInThisTileCount; i++)
+            {
+                triangleBufferLocal[i] = vertexBuffer[tileTriangleIndexBuffer[projectedTrianglesStartIndex + i]];
+            }
+
             for (int y = tileStartY; y < tileEndY; y++)
             {
                 for (int x = tileStartX; x < tileEndX; x++)
@@ -724,9 +736,7 @@ namespace ClosedGL
 
                     for (int i = 0; i < projectedTrianglesInThisTileCount; i++)
                     {
-                        int triangleIndex = tileTriangleIndexBuffer[projectedTrianglesStartIndex + i];
-
-                        Triangle triangle = vertexBuffer[triangleIndex];
+                        Triangle triangle = triangleBufferLocal[i];
 
                         // calculate the barycentric coordinates
                         Vec3 barycentric = CalculateBarycentricCoordinatesKernel(pixel, triangle.A, triangle.B, triangle.C);
@@ -1194,7 +1204,7 @@ namespace ClosedGL
             accelerator.DefaultStream.Synchronize();
             RecordTime("binning_kernel");
 
-            var blockSize = new Index1D(512); // For example, 256 threads per block
+            var blockSize = accelerator.AcceleratorType == AcceleratorType.CPU ? new Index1D(16) : new Index1D(512); // For example, 256 threads per block
 
             // Calculating grid size based on total tile count
             var gridDim = (tileCount + blockSize - 1) / blockSize;
