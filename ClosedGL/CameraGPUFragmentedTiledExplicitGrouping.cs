@@ -80,6 +80,7 @@ namespace ClosedGL
                     finally
                     {
                         bitmap.UnlockBits(lockInfo);
+                        var pixl = bitmap.GetPixel(0, 0);
                         frame = null;
                     }
 
@@ -407,7 +408,7 @@ namespace ClosedGL
 
             for (int triangleIndex = triangleIndexStart; triangleIndex < triangleIndexStart + triangleCount.Value; triangleIndex++)
             {
-                if (gameObjectIndex >= gameObjectPositions.Length)
+                if (gameObjectIndex > gameObjectPositions.Length - 1)
                 {
                     return;
                 }
