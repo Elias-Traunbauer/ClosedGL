@@ -398,13 +398,15 @@ namespace ClosedGL
             for (int i = 0; i < trianglesPerGameObject.Length; i++)
             {
                 currentTriangleCount += trianglesPerGameObject[gameObjectIndex];
-                if (triangleIndexStart < currentTriangleCount)
+                if (triangleIndexStart <= currentTriangleCount)
                 {
+                    currentTriangleCount -= trianglesPerGameObject[gameObjectIndex];
                     break;
                 }
                 gameObjectIndex++;
             }
-            currentTriangleCount = 0;
+            // set current triangle count
+            currentTriangleCount = triangleIndexStart - currentTriangleCount;
 
             for (int triangleIndex = triangleIndexStart; triangleIndex < triangleIndexStart + triangleCount.Value; triangleIndex++)
             {
@@ -417,9 +419,13 @@ namespace ClosedGL
                 Quaternion rotation = gameObjectRotations[gameObjectIndex];
                 Vec3 scale = gameObjectScales[gameObjectIndex];
 
-                int verticesIndex = Atomic.Add(ref resultVerticesIndex.Value, 3);
-
                 int verticesStartIndex = triangleIndex * 3;
+
+                if (verticesStartIndex >= triangleSourceBuffer.Length)
+                {
+                    return;
+                }
+                int verticesIndex = Atomic.Add(ref resultVerticesIndex.Value, 3);
 
                 Vec3 v1 = vertexSourceBuffer[triangleSourceBuffer[verticesStartIndex + 0]];
                 Vec3 v2 = vertexSourceBuffer[triangleSourceBuffer[verticesStartIndex + 1]];
@@ -711,6 +717,10 @@ namespace ClosedGL
             if (projectedTrianglesInThisTileCount == 0)
             {
                 return;
+            }
+            if (projectedTrianglesInThisTileCount > TRIANGLE_BUFFER_PER_TILE)
+            {
+                projectedTrianglesInThisTileCount = TRIANGLE_BUFFER_PER_TILE;
             }
             Triangle[] triangleBufferLocal = new Triangle[TRIANGLE_BUFFER_PER_TILE];
             int projectedTrianglesStartIndex = tileIndex * TRIANGLE_BUFFER_PER_TILE;
@@ -1048,7 +1058,9 @@ namespace ClosedGL
             gameObjectScalesMemory.CopyFromCPU(gameObjectScales);
             RecordTime("memory_copy");
 
-            float coresToUse = accelerator.MaxNumThreads;
+            //float coresToUse = accelerator.MaxNumThreads; // 69632
+            float coresToUse = accelerator.MaxNumThreads; // 69632
+
             //float coresToUse = trianglesSource.Length / 3;
             coresToUse = XMath.Max(coresToUse, 1);
             coresToUse = XMath.Min(coresToUse, trianglesSource.Length / 3);
@@ -1208,7 +1220,7 @@ namespace ClosedGL
             var blockSize = accelerator.AcceleratorType == AcceleratorType.CPU ? new Index1D(16) : new Index1D(512); // For example, 256 threads per block
 
             // Calculating grid size based on total tile count
-            var gridDim = (tileCount + blockSize - 1) / blockSize;
+            var gridDim = (int)Math.Ceiling((tileCount) / (double)blockSize.Size);
             var kernelConfig = new KernelConfig(gridDim, blockSize);
 
             profilingStopwatch.Restart();

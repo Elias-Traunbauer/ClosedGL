@@ -765,7 +765,7 @@ namespace VRageMath
         /// Linearly interpolates between two quaternions.
         /// </summary>
         /// <param name="quaternion1">Source quaternion.</param><param name="quaternion2">Source quaternion.</param><param name="amount">Value indicating how far to interpolate between the quaternions.</param>
-        public Quaternion Lerp(Quaternion quaternion1, Quaternion quaternion2, float amount)
+        public static Quaternion Lerp(Quaternion quaternion1, Quaternion quaternion2, float amount)
         {
             float num1 = amount;
             float num2 = 1f - num1;

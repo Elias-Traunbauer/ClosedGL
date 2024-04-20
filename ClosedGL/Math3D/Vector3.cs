@@ -1042,7 +1042,7 @@ namespace VRageMath
         /// Performs a linear interpolation between two vectors.
         /// </summary>
         /// <param name="value1">Source vector.</param><param name="value2">Source vector.</param><param name="amount">Value between 0 and 1 indicating the weight of value2.</param>
-        public Vector3 Lerp(Vector3 value1, Vector3 value2, float amount)
+        public static Vector3 Lerp(Vector3 value1, Vector3 value2, float amount)
         {
             Vector3 vector3;
             vector3.X = value1.X + (value2.X - value1.X) * amount;

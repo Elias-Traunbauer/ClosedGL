@@ -26,7 +26,7 @@ namespace ClosedGL.SMath
                     float endFactor = values[i];
                     float startFactor = previousFactor;
                     float t = (x - startFactor) / (endFactor - startFactor);
-                    return points[i].Lerp(previousPoint, points[i], t);
+                    return T.Lerp(previousPoint, points[i], t);
                 }
 
                 previousFactor = currentFactor;
@@ -78,7 +78,7 @@ namespace ClosedGL.SMath
                     float endFactor = values[i];
                     float startFactor = previousFactor;
                     float t = (x - startFactor) / (endFactor - startFactor);
-                    return points[i].Lerp(previousPoint, points[i], t);
+                    return T.Lerp(previousPoint, points[i], t);
                 }
 
                 previousFactor = currentFactor;
