@@ -177,18 +177,18 @@ namespace RenderTest
 
             Cube b1 = new();
             b1.Position = new Vector3(10, 50, 0);
-            b1.Scale = new Vector3(5, 1, 1);
+            b1.Scale = new Vector3(5, 3, 3);
             b1.Rotation = Quaternion.CreateFromYawPitchRoll(0, 0, 0);
 
             Cube b2 = new();
             b2.Position = new Vector3(0, 50, 10);
-            b2.Scale = new Vector3(5, 1, 1);
+            b2.Scale = new Vector3(5, 3, 3) * 2;
             b2.Rotation = Quaternion.CreateFromYawPitchRoll(0, (float)Math.PI, 0);
             var d = YawPitchRoll.FromQuaternion(b2.Rotation);
 
             Cube b3 = new();
             b3.Position = new Vector3(10, 50, 10);
-            b3.Scale = new Vector3(5, 1, 1);
+            b3.Scale = new Vector3(5, 3, 3) * 3;
             b3.Rotation = Quaternion.CreateFromYawPitchRoll(0, (float)(Math.PI * 2), 0);
 
             camera.Initialize([house.Texture!]);
@@ -342,9 +342,11 @@ namespace RenderTest
                     //var res = camera.Render([go, cub, cub1, .. gameObjects/*, cubi,..   /*house*/]);
                     //var res = camera.Render(new List<GameObject>() { go, cub, cub1, }.Concat(gameObjects).ToList());
                     //var res = camera.Render([go, cub, cub1, .. gameObjects]);
+                    b1.Rotation = Quaternion.CreateFromYawPitchRoll(x, 0, 0);
+                    b2.Rotation = Quaternion.CreateFromYawPitchRoll(0, x, 0);
+                    b3.Rotation = Quaternion.CreateFromYawPitchRoll(0, 0, x);
 
-
-                    var res = camera.Render([.. gameObjects/*, cub, cub1, */, b1, b2, b3]);
+                    var res = camera.Render([.. gameObjects/*, cub, cub1, */]);
                     renderStopwatch.Stop();
 
                     //foreach (var item in res.Keys.Reverse())

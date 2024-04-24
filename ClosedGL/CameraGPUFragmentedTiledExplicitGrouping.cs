@@ -80,7 +80,6 @@ namespace ClosedGL
                     finally
                     {
                         bitmap.UnlockBits(lockInfo);
-                        var pixl = bitmap.GetPixel(0, 0);
                         frame = null;
                     }
 
@@ -435,9 +434,9 @@ namespace ClosedGL
                 ////var localVertexPosition = TransformToLocal(worldVertexPosition);
                 //var localVertexPositionBeta = TransformToLocalBeta(worldVertexPosition);
 
-                v1 = (v1 * rotation * scale) + position;
-                v2 = (v2 * rotation * scale) + position;
-                v3 = (v3 * rotation * scale) + position;
+                v1 = ((v1 * scale) * rotation) + position;
+                v2 = ((v2 * scale) * rotation) + position;
+                v3 = ((v3 * scale) * rotation) + position;
 
                 v1 = TransformToLocalKernel(v1, cameraPosition.Value, worldMatrix.Value);
                 v2 = TransformToLocalKernel(v2, cameraPosition.Value, worldMatrix.Value);
@@ -730,24 +729,41 @@ namespace ClosedGL
                 triangleBufferLocal[i] = vertexBuffer[tileTriangleIndexBuffer[projectedTrianglesStartIndex + i]];
             }
 
-            for (int y = tileStartY; y < tileEndY; y++)
+            for (int i = 0; i < projectedTrianglesInThisTileCount; i++)
             {
-                for (int x = tileStartX; x < tileEndX; x++)
+                Triangle triangle = triangleBufferLocal[i];
+
+                int textureIndex = triangle.textureIndex;
+
+                int textureWidth = textureWidths[textureIndex];
+                int textureHeight = textureHeights[textureIndex];
+
+                int textureOffset = 0;
+
+                for (int j = 0; j < textureIndex; j++)
                 {
-                    // check every triangle for this pixel
-                    int yCoord = (int)renderResoultion.Value.y - y - 1;
-                    int pixelIndex = yCoord * (int)res.x + x;
+                    textureOffset += textureWidths[j] * textureHeights[j]/* * bytesPerPixel*/;
+                }
 
-                    if (pixelIndex >= res.x * res.y || pixelIndex < 0)
+                bool enoughUVs = triangle.uvIndex3 < uvs.Length;
+                Vec2 uv1 = enoughUVs ? uvs[triangle.uvIndex1] : new Vec2(0, 0);
+                Vec2 uv2 = enoughUVs ? uvs[triangle.uvIndex2] : new Vec2(1, 0);
+                Vec2 uv3 = enoughUVs ? uvs[triangle.uvIndex3] : new Vec2(0, 1);
+
+                for (int y = tileStartY; y < tileEndY; y++)
+                {
+                    for (int x = tileStartX; x < tileEndX; x++)
                     {
-                        continue;
-                    }
+                        // check every triangle for this pixel
+                        int yCoord = (int)renderResoultion.Value.y - y - 1;
+                        int pixelIndex = yCoord * (int)res.x + x;
 
-                    Vec2 pixel = new(x, y);
+                        if (pixelIndex >= res.x * res.y || pixelIndex < 0)
+                        {
+                            continue;
+                        }
 
-                    for (int i = 0; i < projectedTrianglesInThisTileCount; i++)
-                    {
-                        Triangle triangle = triangleBufferLocal[i];
+                        Vec2 pixel = new(x, y);
 
                         // calculate the barycentric coordinates
                         Vec3 barycentric = CalculateBarycentricCoordinatesKernel(pixel, triangle.A, triangle.B, triangle.C);
@@ -758,6 +774,7 @@ namespace ClosedGL
                         depth = -depth;
                         int depthIndex = x + (int)renderResoultion.Value.x * y;
                         float depthBufferAtIndex = depthBuffer[depthIndex];
+
                         if (depth < depthBufferAtIndex && depthBufferAtIndex != 0)
                         {
                             continue;
@@ -767,37 +784,22 @@ namespace ClosedGL
                         {
                             continue;
                         }
-                        bool enoughUVs = triangle.uvIndex3 < uvs.Length;
-
-                        Vec2 uv1 = enoughUVs ? uvs[triangle.uvIndex1] : new Vec2(0, 0);
-                        Vec2 uv2 = enoughUVs ? uvs[triangle.uvIndex2] : new Vec2(1, 0);
-                        Vec2 uv3 = enoughUVs ? uvs[triangle.uvIndex3] : new Vec2(0, 1);
 
                         // Interpolate UVs
                         Vec2 uv = InterpolateUVKernel(barycentric, uv1, uv2, uv3);
                         //Vec2 uv = new Vec2(0, 0);
 
-                        depthBuffer[depthIndex] = depth;
-
                         // Get the color from the texture
-
-                        int textureIndex = triangle.textureIndex;
-
-                        int texturePixelX = (int)(uv.x * textureWidths[textureIndex]);
-                        int texturePixelY = (int)(uv.y * textureHeights[textureIndex]);
+                        int texturePixelX = (int)(uv.x * textureWidth);
+                        int texturePixelY = (int)(uv.y * textureHeight);
 
                         // clamp the texture pixel coordinates
-                        texturePixelX = XMath.Max(0, XMath.Min(texturePixelX, textureWidths[textureIndex] - 1));
-                        texturePixelY = XMath.Max(0, XMath.Min(texturePixelY, textureHeights[textureIndex] - 1));
+                        //texturePixelX = XMath.Max(0, XMath.Min(texturePixelX, textureWidth - 1));
+                        //texturePixelY = XMath.Max(0, XMath.Min(texturePixelY, textureHeight - 1));
+                        texturePixelX %= textureWidth;
+                        texturePixelY %= textureHeight;
 
-                        int texturePixelIndex = texturePixelY * textureWidths[textureIndex] + texturePixelX;
-
-                        int textureOffset = 0;
-
-                        for (int j = 0; j < textureIndex; j++)
-                        {
-                            textureOffset += textureWidths[j] * textureHeights[j]/* * bytesPerPixel*/;
-                        }
+                        int texturePixelIndex = texturePixelY * textureWidth + texturePixelX;
 
                         int frameIndex = pixelIndex/* * bytesPerPixel*/;
                         //texturePixelIndex *= bytesPerPixel;
@@ -811,8 +813,10 @@ namespace ClosedGL
                         Pixel pixel1 = textures[texturePixelIndex + textureOffset + 0];
 
                         frame[frameIndex + 0] = pixel1;
+                        depthBuffer[depthIndex] = depth;
                     }
                 }
+
             }
         }
 
