@@ -532,7 +532,7 @@ namespace ClosedGL
 
                     var cross = Vec3.Cross(new Vec3(p1p2.x, p1p2.y, 0), new Vec3(p1p3.x, p1p3.y, 0));
 
-                    if (cross.z < 0)
+                    if (cross.z < 0 && false)
                     {
                         return;
                     }
@@ -553,18 +553,18 @@ namespace ClosedGL
                             textureIndex,
                             triangles[verticesStartIndex + 0], triangles[verticesStartIndex + 1], triangles[verticesStartIndex + 2]
                             );
-                    if (area > TRIANGLE_SIZE_SPLIT_4_THRESHOLD)
-                    {
-                        results = originalTriangle.Split(Triangle.TriangleSplitAmount.Eight);
-                    }
-                    else if (area > TRIANGLE_SIZE_SPLIT_THRESHOLD)
-                    {
-                        results = originalTriangle.Split();
-                    }
-                    else
-                    {
+                    //if (area > TRIANGLE_SIZE_SPLIT_4_THRESHOLD)
+                    //{
+                    //    results = originalTriangle.Split(Triangle.TriangleSplitAmount.Eight);
+                    //}
+                    //else if (area > TRIANGLE_SIZE_SPLIT_THRESHOLD)
+                    //{
+                    //    results = originalTriangle.Split();
+                    //}
+                    //else
+                    //{
                         results = [originalTriangle];
-                    }
+                    //}
                     int finalResultsLength = 0;
                     Triangle[] finalResultsBuffer = new Triangle[6 * 6];
                     for (int k = 0; k < results.Length; k++)
