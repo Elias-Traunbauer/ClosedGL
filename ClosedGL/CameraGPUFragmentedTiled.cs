@@ -1533,6 +1533,8 @@ namespace ClosedGL
         public int uvIndex2;      // 4 bytes
         public int uvIndex3;      // 4 bytes
 
+        // total here is 52 bytes
+
         //public int padding1, padding2, padding3; // 12 bytes
 
         // total: 64 bytes
