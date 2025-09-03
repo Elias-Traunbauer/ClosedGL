@@ -153,8 +153,11 @@ namespace ClosedGL
         public CameraGPUFragmented()
         {
             bool debug = false;
-            context = Context.CreateDefault();
-            device = context.Devices.First(x => debug ? x.AcceleratorType == AcceleratorType.CPU : x.AcceleratorType == AcceleratorType.Cuda);
+            context = Context.Create()
+                            .EnableAlgorithms()
+                            .AllAccelerators()
+                            .ToContext();
+            device = context.Devices.First(x => debug ? x.AcceleratorType == AcceleratorType.CPU : x.AcceleratorType != AcceleratorType.CPU);
             accelerator = device.CreateAccelerator(context);
         }
 

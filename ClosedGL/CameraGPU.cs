@@ -100,8 +100,11 @@ namespace ClosedGL
 
         public CameraGPU()
         {
-            context = Context.CreateDefault();
-            device = context.Devices.First(x => x.AcceleratorType == AcceleratorType.Cuda);
+            context = Context.Create()
+                            .EnableAlgorithms()
+                            .AllAccelerators()
+                            .ToContext();
+            device = context.Devices.First(x => x.AcceleratorType != AcceleratorType.CPU);
             accelerator = ((Device)device).CreateAccelerator(context);
         }
 

@@ -181,7 +181,10 @@ namespace ClosedGL
             bool includeCPU = true;
             bool debug = false;
 
-            context = Context.CreateDefault();
+            context = Context.Create()
+                            .EnableAlgorithms()
+                            .AllAccelerators()
+                            .ToContext();
             if (debug)
             {
                 device = context.Devices.First(x => x.AcceleratorType == AcceleratorType.CPU);

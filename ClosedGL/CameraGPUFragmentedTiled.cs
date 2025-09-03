@@ -12,6 +12,7 @@ using System.Windows.Forms;
 using System.Xml.Linq;
 using TraunisExtensions;
 using VRageMath;
+using ILGPU.Runtime.Cuda;
 
 namespace ClosedGL
 {
@@ -178,9 +179,13 @@ namespace ClosedGL
         public CameraGPUFragmentedTiled()
         {
             bool includeCPU = true;
-            bool debug = false; 
-            
-            context = Context.CreateDefault();
+            bool debug = false;
+
+            context = Context.Create()
+                .EnableAlgorithms()
+                .AllAccelerators()
+                .ToContext();
+
             if (debug)
             {
                 device = context.Devices.First(x => x.AcceleratorType == AcceleratorType.CPU);

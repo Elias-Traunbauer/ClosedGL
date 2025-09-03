@@ -116,7 +116,7 @@ namespace RenderTest
             //    Position = new Vector3(0, 0, 40),
             //    RenderResolution = new Vector2I(Width, Height),
             //};
-            IRenderer camera = new CameraGPUFragmentedTiledExplicitGrouping()
+            IRenderer camera = new CameraGPU()
             {
                 FieldOfView = 70f,
                 Position = new Vector3(40, 150, 100),
